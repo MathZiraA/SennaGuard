@@ -20,12 +20,14 @@ def criar_tabelas(con):
     coluna(con, "usuarios", "foto_em", "integer")
     coluna(con, "usuarios", "painel", "text")
     coluna(con, "usuarios", "tour_visto", "integer default 0")
+    coluna(con, "usuarios", "aparencia", "text")
 
 
 def do_usuario(u):
     """Campos do perfil que vão junto com /api/eu."""
     return {"foto": u.get("foto_em"), "tour_visto": bool(u.get("tour_visto")),
             "painel": json.loads(u["painel"]) if u.get("painel") else None,
+            "aparencia": json.loads(u["aparencia"]) if u.get("aparencia") else None,
             "notificacoes": telegram.preferencias(u.get("notificacoes")) | {
                 "alertas": bool(u.get("alerta_email")), "chamados_equipe": bool(u.get("chamado_email"))}}
 
@@ -85,6 +87,20 @@ def salvar_painel(p: Painel, u=auth.exigir("visao")):
 def restaurar_painel(u=auth.exigir("visao")):
     with db() as con:
         con.execute("update usuarios set painel=null where id=?", (u["id"],))
+
+
+class Aparencia(BaseModel):
+    # Preferências visuais sincronizadas com a conta (tema, cor de acento e densidade).
+    tema: str | None = Field(default=None, pattern="^(escuro|claro)$")
+    acento: str | None = Field(default=None, pattern="^(grafite|roxo|azul|verde|ambar|rosa|custom)$")
+    acentoHex: str | None = Field(default=None, pattern="^#[0-9a-fA-F]{6}$")
+    densidade: str | None = Field(default=None, pattern="^(confortavel|compacto)$")
+
+
+@router.put("/api/eu/aparencia", status_code=204)
+def salvar_aparencia(a: Aparencia, u=auth.exigir("visao")):
+    with db() as con:
+        con.execute("update usuarios set aparencia=? where id=?", (json.dumps(a.model_dump(exclude_none=True)), u["id"]))
 
 
 @router.post("/api/eu/tour", status_code=204)
