@@ -19,7 +19,7 @@ export function situacao(m: Manutencao, agora = Date.now() / 1000) {
 
 export default function Manutencoes() {
   const { pode } = useSessao()
-  const { dados, recarregar } = useApi<Manutencao[]>('/api/manutencoes', 60000, ['manutencao'])
+  const { dados, erro: erroDados, recarregar } = useApi<Manutencao[]>('/api/manutencoes', 60000, ['manutencao'])
   const amanha = new Date(Date.now() + 86400000); amanha.setHours(8, 0, 0, 0)
   const local = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
   const [f, setF] = useState({ titulo: '', descricao: '', inicio: local(amanha), minutos: 120 })
@@ -37,7 +37,7 @@ export default function Manutencoes() {
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Manutenção</h1>
+        <h1 className="titulo-pagina">Manutenção</h1>
         <p className="mt-1 text-tinta-3">Durante a janela, o Zabbix continua medindo, mas os avisos de alerta ficam suspensos. A Filial é avisada no Telegram ao agendar e 1 h antes.</p>
       </div>
 
@@ -66,7 +66,7 @@ export default function Manutencoes() {
         )}
 
         <Card titulo="Janelas" className={pode('manutencao') ? '' : 'lg:col-span-2'}>
-          {!dados ? <Carregando /> : !dados.length ? <Vazio>Nenhuma manutenção nos últimos 30 dias.</Vazio> : (
+          {!dados ? <Carregando erro={erroDados} onTentar={recarregar} /> : !dados.length ? <Vazio>Nenhuma manutenção nos últimos 30 dias.</Vazio> : (
             <ul className="flex flex-col">
               {[...dados].sort((a, b) => b.inicio - a.inicio).map(m => {
                 const s = situacao(m)

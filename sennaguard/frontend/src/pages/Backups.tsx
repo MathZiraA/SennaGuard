@@ -7,7 +7,7 @@ import { Botao, Card, Carregando, Chip, Vazio } from '../components/ui'
 type Versao = { arquivo: string; em: number; linhas: number }
 
 export default function Backups() {
-  const { dados, recarregar } = useApi<Record<string, Versao[]>>('/api/backups', 0, ['backups'])
+  const { dados, erro: erroDados, recarregar } = useApi<Record<string, Versao[]>>('/api/backups', 0, ['backups'])
   const [host, setHost] = useState('R-FILIAL')
   const [sel, setSel] = useState<[string, string] | null>(null) // [antes, depois]
   const [diff, setDiff] = useState<string[] | null>(null)
@@ -45,7 +45,7 @@ export default function Backups() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Backups de configuração</h1>
+          <h1 className="titulo-pagina">Backups de configuração</h1>
           <p className="mt-1 text-tinta-3">Exportação diária às 3 h (sem senhas). Uma versão nova só é guardada quando algo muda.</p>
         </div>
         <Botao onClick={agora} disabled={!!ocupado}><ArrowsClockwise className={ocupado === 'backup' ? 'animate-spin' : ''} />Fazer backup agora</Botao>
@@ -53,7 +53,7 @@ export default function Backups() {
 
       <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
         <Card titulo="Versões" acao={<div className="flex gap-1.5">{Object.keys(dados ?? {}).map(h => <Chip key={h} ativo={h === host} onClick={() => setHost(h)}>{h}</Chip>)}</div>}>
-          {!dados ? <Carregando /> : !vs.length ? <Vazio>Nenhum backup ainda.</Vazio> : (
+          {!dados ? <Carregando erro={erroDados} onTentar={recarregar} /> : !vs.length ? <Vazio>Nenhum backup ainda.</Vazio> : (
             <ul className="flex flex-col gap-1">
               {vs.map((v, i) => {
                 const marcado = sel?.includes(v.arquivo)

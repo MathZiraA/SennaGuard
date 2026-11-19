@@ -44,7 +44,7 @@ export default function Chat() {
   return (
     <Dialog.Root open={aberto} onOpenChange={setAberto}>
       <Dialog.Trigger aria-label="Pergunte ao NOC" data-tour="chat"
-        className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] right-4 z-30 flex h-12 md:bottom-5 md:right-5 items-center gap-2 rounded-full bg-fibra px-5 font-semibold text-white shadow-[0_8px_24px_rgb(111_90_224/0.35)] transition-transform duration-150 hover:bg-fibra-hover active:scale-[0.97]">
+        className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] right-4 z-30 flex h-12 md:bottom-5 md:right-5 items-center gap-2 rounded-full bg-fibra px-5 font-semibold text-sobre-fibra shadow-[0_8px_24px_rgb(0_0_0/0.28)] transition-transform duration-150 hover:bg-fibra-hover active:scale-[0.97]">
         <ChatCircleDots size={20} weight="fill" /><span className="hidden sm:inline">Pergunte ao NOC</span>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -73,7 +73,7 @@ export default function Chat() {
             )}
             {msgs.map((m, i) => (
               <div key={i} className={`flex ${m.papel === 'usuario' ? 'justify-end' : ''}`}>
-                <div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 leading-relaxed ${m.papel === 'usuario' ? 'rounded-br-md bg-fibra text-white' : m.erro ? 'rounded-bl-md bg-desastre/10 text-desastre' : 'rounded-bl-md bg-painel-alto text-tinta'}`}>
+                <div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 leading-relaxed ${m.papel === 'usuario' ? 'rounded-br-md bg-fibra text-sobre-fibra' : m.erro ? 'rounded-bl-md bg-desastre/10 text-desastre' : 'rounded-bl-md bg-painel-alto text-tinta'}`}>
                   {m.papel === 'ia' ? <TextoIa texto={m.texto} /> : m.texto}
                 </div>
               </div>
@@ -87,7 +87,7 @@ export default function Chat() {
               placeholder={estado?.provedor ? 'Escreva sua pergunta…' : 'IA indisponível'}
               className="h-10 min-w-0 flex-1 rounded-lg border border-fio bg-fenda px-3 text-tinta placeholder:text-tinta-4 focus:border-fibra/60 focus:outline-none" />
             <button type="submit" disabled={!texto.trim() || pensando} aria-label="Enviar"
-              className="grid size-10 place-items-center rounded-lg bg-fibra text-white transition-[background-color,transform] hover:bg-fibra-hover active:scale-[0.97] disabled:opacity-40"><PaperPlaneRight size={17} weight="fill" /></button>
+              className="grid size-10 place-items-center rounded-lg bg-fibra text-sobre-fibra transition-[background-color,transform] hover:bg-fibra-hover active:scale-[0.97] disabled:opacity-40"><PaperPlaneRight size={17} weight="fill" /></button>
           </form>
         </Dialog.Content>
       </Dialog.Portal>
