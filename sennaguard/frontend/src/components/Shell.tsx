@@ -72,9 +72,9 @@ export default function Shell() {
           className={({ isActive }) => `relative flex h-10 items-center gap-3 rounded-lg text-[13.5px] transition-colors duration-150 focus-visible:outline-offset-0 ${compacta ? 'justify-center' : 'px-3.5'} ${isActive ? `bg-ativo font-medium text-tinta [&_svg]:text-fibra ${compacta ? '' : 'before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-fibra'}` : 'text-tinta-2 hover:bg-realce hover:text-tinta'}`}>
           <span className="relative">
             <Icone size={19} weight="fill" />
-            {compacta && ponto[para] && <span className="absolute -right-1 -top-0.5 size-1.5 rounded-full" style={{ background: ponto[para]! }} />}
+            {compacta && ponto[para] && <span className="ponto-pop absolute -right-1 -top-0.5 size-1.5 rounded-full" style={{ background: ponto[para]! }} />}
           </span>
-          {!compacta && <>{rotulo}{ponto[para] && <span className="size-1.5 rounded-full" style={{ background: ponto[para]! }} />}</>}
+          {!compacta && <>{rotulo}{ponto[para] && <span className="ponto-pop size-1.5 rounded-full" style={{ background: ponto[para]! }} />}</>}
         </NavLink>
       ))}
     </nav>
@@ -148,11 +148,11 @@ export default function Shell() {
             {pode('alertas') && <NavLink to="/alertas" aria-label={`${ativos} alertas ativos`} data-tour="sino"
               className="relative grid size-9 place-items-center rounded-lg text-tinta transition-colors hover:bg-realce">
               <Bell size={20} weight="fill" />
-              {ativos > 0 && <span className="absolute right-2 top-1.5 size-2 rounded-full border-2 border-rack bg-desastre" />}
+              {ativos > 0 && <span className="ponto-pop absolute right-2 top-1.5 size-2 rounded-full border-2 border-rack bg-desastre" />}
             </NavLink>}
             <NavLink to="/chamados" aria-label="Chamados" className="relative grid size-9 place-items-center rounded-lg text-tinta transition-colors hover:bg-realce">
               <Ticket size={20} weight="fill" />
-              {semDono > 0 && <span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-rack bg-media" />}
+              {semDono > 0 && <span className="ponto-pop absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-rack bg-media" />}
             </NavLink>
             {eu && <NavLink to="/perfil" aria-label="Meu perfil" className="ml-1 md:hidden"><Avatar id={eu.id} nome={eu.nome} foto={eu.foto} tamanho={30} /></NavLink>}
           </div>
@@ -181,7 +181,7 @@ export default function Shell() {
             className={({ isActive }) => `relative flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-[10.5px] font-medium ${isActive ? 'text-fibra' : 'text-tinta-3'}`}>
             <span className="relative">
               <Icone size={22} weight="fill" />
-              {ponto[para] && <span className="absolute -right-1 -top-0.5 size-2 rounded-full border-2 border-lateral" style={{ background: ponto[para]! }} />}
+              {ponto[para] && <span className="ponto-pop absolute -right-1 -top-0.5 size-2 rounded-full border-2 border-lateral" style={{ background: ponto[para]! }} />}
             </span>
             {curto}
           </NavLink>

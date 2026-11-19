@@ -131,11 +131,11 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.012em; text-wr
 @keyframes surge-sai { to { opacity: 0; transform: translate(-50%, -49%) scale(.96); } }
 
 /* Menus suspensos (Radix): crescem a partir do gatilho e fecham mais rápido do que abrem. */
-@keyframes menu-abre { from { opacity: 0; transform: scale(.97); } }
-@keyframes menu-fecha { to { opacity: 0; transform: scale(.99); } }
+@keyframes menu-abre { from { opacity: 0; transform: scale(var(--dropdown-pre-scale)); } }
+@keyframes menu-fecha { to { opacity: 0; transform: scale(var(--dropdown-closing-scale)); } }
 [data-radix-menu-content] { transform-origin: var(--radix-dropdown-menu-content-transform-origin); }
-[data-radix-menu-content][data-state="open"] { animation: menu-abre var(--duracao-media) var(--curva-suave); }
-[data-radix-menu-content][data-state="closed"] { animation: menu-fecha var(--duracao-rapida) var(--curva-suave); }
+[data-radix-menu-content][data-state="open"] { animation: menu-abre var(--dropdown-open-dur) var(--dropdown-ease); }
+[data-radix-menu-content][data-state="closed"] { animation: menu-fecha var(--dropdown-close-dur) var(--dropdown-ease); }
 
 /* Esqueleto de carregamento: brilho que atravessa o bloco. */
 @keyframes brilho { to { background-position: -200% 0; } }
@@ -149,3 +149,144 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.012em; text-wr
   .esqueleto { animation: none; }
   [data-state=open], [data-state=closed] { animation-name: aparece !important; animation-duration: 1ms !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   Animações (receitas do transitions.dev, ajustadas aos tokens do SennaGuard).
+   Regra: a animação mostra o que mudou; nada se move à toa.
+   --------------------------------------------------------------------------- */
+
+/* Número ao vivo: só os dígitos que mudaram cruzam, subindo quando o valor sobe e descendo quando cai. */
+.num-vivo { display: inline-flex; align-items: baseline; font-variant-numeric: tabular-nums; }
+.num-vivo > span { white-space: pre; } /* o flex engoliria os espaços entre os caracteres */
+.num-vivo .slot { position: relative; display: inline-block; }
+.num-vivo .novo { display: inline-block; }
+.num-vivo .velho { position: absolute; inset: 0; text-align: center; pointer-events: none; }
+.num-vivo.anima .novo { animation: num-entra 455ms var(--curva-suave) both; }
+.num-vivo.anima .velho { animation: num-sai 455ms var(--curva-suave) both; }
+@keyframes num-entra { from { transform: translateY(calc(0.14em * var(--dir, 1))); opacity: 0; filter: blur(0.042em); } }
+@keyframes num-sai { to { transform: translateY(calc(0.14em * var(--dir, 1) * -1)); opacity: 0; filter: blur(0.042em); } }
+
+/* Entrada da tela: os cartões sobem em sequência, 40 ms entre um e outro, só na primeira abertura. */
+@keyframes sobe { from { opacity: 0; transform: translateY(12px); filter: blur(3px); } }
+.entra-escalonado { animation: sobe 500ms var(--curva-suave) both; animation-delay: calc(var(--i, 0) * 40ms); }
+
+/* Ponto de notificação: aparece com um pequeno salto. */
+@keyframes ponto-pop { 0% { transform: scale(0); opacity: 0; filter: blur(2px); } 100% { transform: scale(1); opacity: 1; filter: blur(0); } }
+.ponto-pop { animation: ponto-pop 500ms cubic-bezier(0.34, 1.36, 0.64, 1) both; }
+
+/* Erro de formulário: tremida curta (80/60/80/60 ms). */
+@keyframes treme {
+  0%     { transform: translateX(0);    animation-timing-function: var(--curva-suave); }
+  28.57% { transform: translateX(6px);  animation-timing-function: var(--curva-suave); }
+  57.14% { transform: translateX(-6px); animation-timing-function: var(--curva-suave); }
+  78.57% { transform: translateX(4px);  animation-timing-function: var(--curva-suave); }
+  100%   { transform: translateX(0); }
+}
+.treme { animation: treme 280ms linear; }
+
+/* Texto "pensando": uma faixa de luz atravessa as letras enquanto a IA trabalha. */
+.brilho-texto { position: relative; display: inline-block; color: var(--color-tinta-3); }
+.brilho-texto::before {
+  content: attr(data-texto); position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(90deg, transparent 0%, transparent 40%, var(--color-tinta) 50%, transparent 60%, transparent 100%);
+  background-size: 400% 100%; background-repeat: no-repeat;
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  animation: varre 2000ms linear infinite;
+}
+@keyframes varre { 0% { background-position: 100% 0; } 100% { background-position: 0% 0; } }
+
+/* Pílula do controle segmentado: desliza até a opção escolhida. */
+.pilula-desliza { transition: transform var(--tabs-dur) var(--tabs-ease), width var(--tabs-dur) var(--tabs-ease); will-change: transform, width; }
+
+/* Título e linhas do login: sobem e ganham foco em sequência. */
+.revela-linha { animation: sobe 500ms var(--curva-suave) both; animation-delay: calc(var(--i, 0) * 60ms); }
+
+@media (prefers-reduced-motion: reduce) {
+  .num-vivo .novo, .entra-escalonado, .ponto-pop, .treme, .revela-linha { animation: none !important; }
+  .num-vivo .velho { display: none; }
+  .brilho-texto::before { animation: none !important; }
+  .pilula-desliza { transition: none !important; }
+}
+
+/* Gráfico: o traço é revelado da esquerda para a direita, uma vez, como um traçado de osciloscópio. */
+@keyframes desenha { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.desenha { animation: desenha 900ms var(--curva-suave) backwards; } /* sem clip depois que termina: o tooltip não é cortado */
+@media (prefers-reduced-motion: reduce) { .desenha { animation: none !important; } }
+
+/* ===========================================================================
+   Sistema de movimento — modelos "Workspace Switcher Dropdown" e "cartão de latência com abas".
+   Durações, curvas, escalas e desfoques são os dos modelos; as cores --stage-* viram tokens do SennaGuard:
+   --stage-surface → painel · --stage-fg → tinta · --stage-muted → tinta-3 · --stage-accent → fibra
+   =========================================================================== */
+:root {
+  /* [Menu abre / fecha] menus que crescem do gatilho */
+  --dropdown-open-dur: 250ms; --dropdown-close-dur: 150ms;
+  --dropdown-pre-scale: 0.97; --dropdown-closing-scale: 0.99;
+  --dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* [Troca de rótulo] rótulo do gatilho ao escolher uma opção */
+  --text-swap-dur: 150ms; --text-swap-translate-y: 4px; --text-swap-blur: 2px; --text-swap-ease: ease-in-out;
+  /* [Abas] pílula deslizante */
+  --tabs-dur: 250ms; --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* [Troca de valor] valores e títulos que mudam porque a aba mudou */
+  --text-soft-dur: 200ms; --text-soft-blur: 2px; --text-soft-ease: ease-in-out;
+  --text-soft-resize-dur: 240ms; --text-soft-resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* [Troca de gráfico] série que sai e série que entra */
+  --chart-dur: 400ms; --chart-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* [Pressionar] abas 0,97 · gatilhos e itens de menu 0,99 */
+  --press-dur: 150ms; --press-scale-aba: 0.97; --press-scale: 0.99; --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Superfícies dos modelos no tema escuro (padrão) */
+  --chip: rgb(255 255 255 / .07); --chip-hover: rgb(255 255 255 / .10);
+  --pill-shadow: 0 1px 3px rgb(0 0 0 / .3), inset 0 0 0 1px rgb(255 255 255 / .06);
+}
+:root[data-tema="claro"] {
+  --chip: rgb(0 0 0 / .04); --chip-hover: rgb(0 0 0 / .06);
+  --pill-shadow: 0 1px 3px rgb(0 0 0 / .08), 0 0 0 1px rgb(0 0 0 / .04);
+}
+
+/* Abas: trilho em cápsula, pílula na superfície do cartão, rótulos por cima */
+.t-tabs { position: relative; display: inline-flex; align-items: center; gap: 3px; padding: 3px; border-radius: 48px; background: var(--chip); }
+.t-tab { position: relative; z-index: 1; height: 30px; padding: 4px 12px; border-radius: 48px; font-size: 12.5px; line-height: 20px; font-weight: 500;
+  color: var(--color-tinta-3); transition: color var(--tabs-dur) var(--tabs-ease), transform var(--press-dur) var(--ease-smooth-out); }
+.t-tab[aria-selected="true"] { color: var(--color-tinta); }
+@media (hover: hover) and (pointer: fine) { .t-tab:not([aria-selected="true"]):hover { color: var(--color-tinta); } }
+.t-tab:is(:active, .is-pressed) { transform: scale(var(--press-scale-aba)); }
+.t-tab:focus-visible { outline: 0; box-shadow: 0 0 0 2px var(--color-painel), 0 0 0 4px var(--color-fibra); }
+.t-tabs-pill { position: absolute; top: 3px; left: 0; height: 30px; border-radius: 48px; background: var(--color-painel-alto); box-shadow: var(--pill-shadow); pointer-events: none; z-index: 0; }
+:root[data-tema="claro"] .t-tabs-pill { background: var(--color-painel); }
+
+/* Troca de rótulo (gatilho do seletor): o antigo sobe e desfoca, o novo entra de baixo */
+.t-text-swap { display: inline-block; transform: translateY(0); filter: blur(0); opacity: 1;
+  transition: transform var(--text-swap-dur) var(--text-swap-ease), filter var(--text-swap-dur) var(--text-swap-ease), opacity var(--text-swap-dur) var(--text-swap-ease);
+  will-change: transform, filter, opacity; }
+.t-text-swap.is-exit { transform: translateY(calc(var(--text-swap-translate-y) * -1)); filter: blur(var(--text-swap-blur)); opacity: 0; }
+.t-text-swap.is-enter-start { transform: translateY(var(--text-swap-translate-y)); filter: blur(var(--text-swap-blur)); opacity: 0; transition: none; }
+
+/* Troca suave de valor (aba mudou): os dois textos se cruzam no mesmo lugar e a largura acompanha */
+.t-text-soft { display: inline-grid; justify-items: var(--text-soft-align, start); transition: width var(--text-soft-resize-dur) var(--text-soft-resize-ease); }
+.t-text-soft > span { grid-area: 1 / 1; white-space: pre; transition: filter var(--text-soft-dur) var(--text-soft-ease), opacity var(--text-soft-dur) var(--text-soft-ease); }
+.t-text-soft-new { opacity: 0; filter: blur(var(--text-soft-blur)); }
+.t-text-soft.is-swapping .t-text-soft-old { opacity: 0; filter: blur(var(--text-soft-blur)); }
+.t-text-soft.is-swapping .t-text-soft-new { opacity: 1; filter: blur(0); }
+
+/* Troca de gráfico: as duas séries ficam montadas e cruzam por opacidade no mesmo lugar */
+.t-series { transition: opacity var(--chart-dur) var(--chart-ease); }
+.t-series[data-ativa="false"] { opacity: 0; pointer-events: none; }
+
+/* Pressionar: itens de menu e gatilhos de seletor encolhem 1%; no toque, .is-pressed segura o efeito */
+[role="menuitem"], [role="menuitemradio"], .t-gatilho { transition: transform var(--press-dur) var(--ease-smooth-out), background-color var(--press-dur) var(--ease-smooth-out); }
+:is([role="menuitem"], [role="menuitemradio"], .t-gatilho):is(:active, .is-pressed) { transform: scale(var(--press-scale)); }
+button.is-pressed:not(:disabled):not(.t-tab):not(.t-gatilho):not([role^="menuitem"]) { transform: scale(var(--press-scale-aba)); }
+
+/* Toque: sem realce azul do navegador, sem selecionar o rótulo, hover só com mouse */
+:where(button, [role="button"], [role="tab"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="switch"], summary, .t-pressable) {
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-tabs-pill, .t-tab, .t-text-swap, .t-text-soft, .t-text-soft > span, .t-series,
+  [role="menuitem"], [role="menuitemradio"], .t-gatilho { transition: none !important; }
+  .t-tab:is(:active, .is-pressed), :is([role="menuitem"], [role="menuitemradio"], .t-gatilho):is(:active, .is-pressed), button.is-pressed { transform: none !important; }
+}
+
+/* Gatilho de seletor: usa a escala do modelo (0,99) no lugar do active:scale-[0.97] dos botões comuns */
+.t-gatilho:is(:active, .is-pressed) { scale: 1; }

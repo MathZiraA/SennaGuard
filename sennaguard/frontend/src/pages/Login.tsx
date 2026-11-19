@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
 import { useApi } from '../lib/api'
 import { useSessao } from '../lib/sessao'
@@ -14,11 +14,14 @@ export default function Login() {
   const [ver, setVer] = useState(false)
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const form = useRef<HTMLFormElement>(null)
+  // Senha errada: o formulário treme de leve (remove, força o reflow e recoloca a classe para repetir)
+  const tremer = () => { const f = form.current; if (!f) return; f.classList.remove('treme'); void f.offsetWidth; f.classList.add('treme') }
 
   const enviar = async (e: FormEvent) => {
     e.preventDefault()
     setErro(''); setEnviando(true)
-    try { await entrar(email, senha) } catch (x) { setErro((x as Error).message) } finally { setEnviando(false) }
+    try { await entrar(email, senha) } catch (x) { setErro((x as Error).message); tremer() } finally { setEnviando(false) }
   }
 
   return (
@@ -30,9 +33,9 @@ export default function Login() {
           <span className="text-[15px] font-semibold tracking-[-0.01em]">SennaGuard</span>
         </div>
         <div className="max-w-[460px]">
-          <Enlace />
-          <h2 className="mt-12 text-[28px] font-medium leading-[1.2] tracking-[-0.02em] text-titulo">A Filial tem redundância agora?</h2>
-          <p className="mt-3 max-w-[40ch] text-[14px] leading-relaxed text-tinta-3">
+          <div className="revela-linha" style={{ '--i': 0 } as React.CSSProperties}><Enlace /></div>
+          <h2 style={{ '--i': 2 } as React.CSSProperties} className="revela-linha mt-12 text-[28px] font-medium leading-[1.2] tracking-[-0.02em] text-titulo">A Filial tem redundância agora?</h2>
+          <p style={{ '--i': 3 } as React.CSSProperties} className="revela-linha mt-3 max-w-[40ch] text-[14px] leading-relaxed text-tinta-3">
             Fibra e rádio entre Matriz e Filial, alertas com a análise do Analista IA e chamados com histórico verificável.
           </p>
         </div>
@@ -49,7 +52,7 @@ export default function Login() {
             </div>
           </div>
 
-          <form onSubmit={enviar} className="flex flex-col gap-4">
+          <form ref={form} onSubmit={enviar} onAnimationEnd={e => e.currentTarget.classList.remove('treme')} className="flex flex-col gap-4">
             <div className="mb-2">
               <h1 className="text-[22px] font-semibold tracking-[-0.02em]">Entrar no NOC</h1>
               <p className="mt-1 text-tinta-3">Use o e-mail cadastrado pela equipe do NOC.</p>

@@ -16,6 +16,21 @@ function TextoIa({ texto }: { texto: string }) {
     parte.startsWith('**') && parte.endsWith('**') ? <b key={i} className="font-semibold">{parte.slice(2, -2)}</b> : parte)}</>
 }
 
+// Etapas mostradas enquanto a IA trabalha (a resposta leva cerca de 30 s): o texto avança com o tempo
+const ETAPAS = [[0, 'Consultando o Zabbix e o SennaGuard…'], [6, 'Cruzando alertas, enlaces e chamados…'], [16, 'Escrevendo a resposta…']] as const
+
+/** Linha de status com uma faixa de luz passando pelo texto; troca de etapa com o tempo. */
+function Pensando() {
+  const [seg, setSeg] = useState(0)
+  useEffect(() => { const id = setInterval(() => setSeg(s => s + 1), 1000); return () => clearInterval(id) }, [])
+  const texto = [...ETAPAS].reverse().find(([s]) => seg >= s)![1]
+  return (
+    <div className="px-1 py-2 text-[12.5px]" role="status" aria-live="polite">
+      <span key={texto} data-texto={texto} className="brilho-texto revela-linha">{texto}</span>
+    </div>
+  )
+}
+
 /** Botão flutuante "Pergunte ao NOC": conversa com a IA usando os dados do Zabbix e do SennaGuard. */
 export default function Chat() {
   const { eu } = useSessao()
@@ -72,13 +87,13 @@ export default function Chat() {
               </div>
             )}
             {msgs.map((m, i) => (
-              <div key={i} className={`flex ${m.papel === 'usuario' ? 'justify-end' : ''}`}>
+              <div key={i} className={`entra-escalonado flex ${m.papel === 'usuario' ? 'justify-end' : ''}`}>
                 <div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 leading-relaxed ${m.papel === 'usuario' ? 'rounded-br-md bg-fibra text-sobre-fibra' : m.erro ? 'rounded-bl-md bg-desastre/10 text-desastre' : 'rounded-bl-md bg-painel-alto text-tinta'}`}>
                   {m.papel === 'ia' ? <TextoIa texto={m.texto} /> : m.texto}
                 </div>
               </div>
             ))}
-            {pensando && <div className="flex gap-1 px-1 py-2" aria-label="A IA está consultando os dados">{[0, 1, 2].map(i => <span key={i} className="respira size-1.5 rounded-full bg-fibra" style={{ animationDelay: `${i * 0.2}s` }} />)}</div>}
+            {pensando && <Pensando />}
             <div ref={fim} />
           </div>
 

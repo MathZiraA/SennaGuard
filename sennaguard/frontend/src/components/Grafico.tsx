@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Area, AreaChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { WarningCircle } from '@phosphor-icons/react'
 import type { Ponto } from '../lib/api'
@@ -55,6 +55,8 @@ export default function Grafico({ dados, serie, cor, unidade, limites = [], faix
           <div className="num mt-0.5 whitespace-nowrap text-[10px] text-tinta-3">{dataHora(ultima.ini).split(' ')[0].replace(',', '')} das {hora(ultima.ini)} às {hora(ultima.fim)}</div>
         </div>
       )}
+      {/* .desenha: o traço aparece da esquerda para a direita só quando o gráfico surge (atualizações ao vivo não repetem) */}
+      <div className="desenha">
       <ResponsiveContainer width="100%" height={altura}>
         <AreaChart data={dados} margin={{ top: ultima ? 46 : 18, right: 0, bottom: 0, left: 0 }}
           onMouseDown={onZoom ? e => e?.activeLabel != null && setSel([+e.activeLabel, +e.activeLabel]) : undefined}
@@ -117,6 +119,7 @@ export default function Grafico({ dados, serie, cor, unidade, limites = [], faix
             activeDot={{ r: 3.5, fill: cor, stroke: 'var(--color-painel)', strokeWidth: 2 }} />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </div>
   )
 }
@@ -131,4 +134,16 @@ export function faixasSemResposta(dados: Ponto[], serie: string, rotulo: string)
   })
   if (ini != null) out.push({ ini, fim: dados[dados.length - 1].t, rotulo })
   return out
+}
+
+/** Troca de gráfico no modelo do "cartão de latência": todas as séries ficam montadas no mesmo lugar e a que
+ *  sai cruza com a que entra por opacidade (--chart-dur). Só a ativa recebe o mouse e é lida por leitores de tela. */
+export function GraficosCruzados({ ativa, graficos }: { ativa: string; graficos: { chave: string; no: ReactNode }[] }) {
+  return (
+    <div className="grid">
+      {graficos.map(g => (
+        <div key={g.chave} className="t-series min-w-0 [grid-area:1/1]" data-ativa={g.chave === ativa} aria-hidden={g.chave !== ativa}>{g.no}</div>
+      ))}
+    </div>
+  )
 }

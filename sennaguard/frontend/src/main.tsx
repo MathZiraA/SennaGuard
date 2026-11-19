@@ -11,8 +11,10 @@ import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
 import './index.css'
 import { aplicarTema } from './lib/tema'
+import { ativarToque } from './lib/toque'
 
 aplicarTema()
+ativarToque()
 
 // Cada tela vira um pedaço separado do pacote: o login e a primeira tela abrem sem baixar o resto (gráficos, chat, etc.)
 const Tv = lazy(() => import('./pages/Tv'))

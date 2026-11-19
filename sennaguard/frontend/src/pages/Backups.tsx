@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowsClockwise, DownloadSimple, Sparkle } from '@phosphor-icons/react'
 import { api, useApi } from '../lib/api'
 import { dataHora, desde } from '../lib/fmt'
-import { Botao, Card, Carregando, Chip, Vazio } from '../components/ui'
+import { Botao, Card, Carregando, Chip, Segmentado, Vazio } from '../components/ui'
 
 type Versao = { arquivo: string; em: number; linhas: number }
 
@@ -52,7 +52,7 @@ export default function Backups() {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <Card titulo="Versões" acao={<div className="flex gap-1.5">{Object.keys(dados ?? {}).map(h => <Chip key={h} ativo={h === host} onClick={() => setHost(h)}>{h}</Chip>)}</div>}>
+        <Card titulo="Versões" acao={<Segmentado rotulo="Roteador" valor={host} onChange={setHost} opcoes={Object.keys(dados ?? {}).map(h => ({ v: h, rotulo: h }))} />}>
           {!dados ? <Carregando erro={erroDados} onTentar={recarregar} /> : !vs.length ? <Vazio>Nenhum backup ainda.</Vazio> : (
             <ul className="flex flex-col gap-1">
               {vs.map((v, i) => {
