@@ -10,6 +10,11 @@ export function aplicarTema(t: Tema = temaAtual()) {
   else delete document.documentElement.dataset.tema
 }
 
+export function definirTema(t: Tema) {
+  try { localStorage.setItem('sg:tema', t) } catch { /* sem storage: vale só nesta aba */ }
+  aplicarTema(t)
+}
+
 export function alternarTema(): Tema {
   const t: Tema = temaAtual() === 'claro' ? 'escuro' : 'claro'
   try { localStorage.setItem('sg:tema', t) } catch { /* sem storage: vale só nesta aba */ }

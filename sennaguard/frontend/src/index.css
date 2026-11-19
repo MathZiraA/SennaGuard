@@ -1,53 +1,71 @@
 @import "tailwindcss";
 
-/* SennaGuard — base PRETA (no estilo do FlowGest), roxo da marca #521B89 só como acento.
+/* SennaGuard — base GRAFITE (no estilo do painel Sentinel): preto neutro, cards escuros com
+   borda sutil, cantos arredondados e sombra suave. O acento padrão é quase-branco (igual ao print);
+   a pessoa troca o acento nas preferências (data-acento no <html>).
    Tipografia: Bricolage Grotesque (títulos) + Hanken Grotesk (corpo). Sem degradês. */
 @theme {
   --font-sans: "Hanken Grotesk Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Bricolage Grotesque Variable", "Hanken Grotesk Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --color-lateral: #090a0e;     /* barra lateral: preto frio */
-  --color-rack: #0c0e13;        /* fundo da área de trabalho: preto (FlowGest) */
-  --color-painel: #12151d;      /* cards */
-  --color-painel-alto: #1a1e28; /* pílulas, chips, menus, diálogos */
-  --color-fenda: #0c0e14;       /* campos: afundados no painel */
+  --color-lateral: #0a0a0c;     /* barra lateral: preto neutro */
+  --color-rack: #09090b;        /* fundo da área de trabalho: preto quase puro (Sentinel) */
+  --color-painel: #111113;      /* cards */
+  --color-painel-alto: #1b1b1f; /* pílulas, chips, menus, diálogos */
+  --color-fenda: #0d0d10;       /* campos: afundados no painel */
 
-  --color-tinta: #e9eaee;
-  --color-tinta-2: #c1c4cc;
-  --color-tinta-3: #888c97;
-  --color-tinta-4: #595d68;
+  --color-tinta: #f3f3f5;
+  --color-tinta-2: #b5b5bd;
+  --color-tinta-3: #85858e;
+  --color-tinta-4: #5a5a63;
 
-  --color-fibra: #a06ee8;       /* enlace principal e cor da marca (roxo, acento sobre o preto) */
-  --color-radio: #4fb8c4;       /* enlace de backup: ciano frio, distinto do roxo */
-  --color-led: #35c98a;         /* link up, situação normal */
+  --color-fibra: #ededf2;       /* acento padrão (Grafite): quase branco, como no print */
+  --color-radio: #8b8d98;       /* série secundária: cinza frio (o traço pontilhado do print) */
+  --color-led: #b7b9c2;         /* no Grafite tudo é cinza: "online"/normal = cinza claro */
 
-  /* Severidades: vermelho-rosado para crítico caindo para lilás no aviso */
-  --color-desastre: #e26a7d;
-  --color-alta: #e38b99;
-  --color-media: #c290dc;
-  --color-aviso: #a597e2;
+  /* Grafite é monocromático: a severidade é dada pelo BRILHO (mais claro = mais grave).
+     As cores reais voltam quando a pessoa escolhe um acento (bloco :root[data-acento] abaixo). */
+  --color-desastre: #fafafa;
+  --color-alta: #cfcfd4;
+  --color-media: #9b9ba3;
+  --color-aviso: #74747e;
 
-  --color-fio: rgb(255 255 255 / 0.06);
-  --color-realce: rgb(255 255 255 / 0.045); /* hover discreto que funciona nos dois temas */
-  --color-sobre-fibra: #ffffff;              /* texto sobre o roxo da marca */
-  --color-fio-forte: rgb(255 255 255 / 0.11);
-  --color-limite: #b85a7a;      /* linhas de limite tracejadas dos gráficos */
-  --color-normal: #454955;      /* linha de referência "Normal" */
-  --color-eixo: #20242e;
+  --color-fio: rgb(255 255 255 / 0.07);
+  --color-realce: rgb(255 255 255 / 0.05); /* hover discreto que funciona nos dois temas */
+  --color-sobre-fibra: #121214;              /* texto sobre o acento claro: escuro (botão branco do print) */
+  --color-fio-forte: rgb(255 255 255 / 0.13);
+  --color-limite: #b0b0b8;      /* linhas de limite tracejadas dos gráficos (cinza no Grafite) */
+  --color-normal: #46464e;      /* linha de referência "Normal" */
+  --color-eixo: #1f1f24;
 
-  --color-titulo: #e4e6ea;      /* título de página em migalha */
-  --color-ativo: #171b24;       /* item ativo da barra lateral: cinza frio */
-  --color-avatar: #4a3d6b;
-  --color-quieto: #171a22;      /* botão cinza cheio */
-  --color-quieto-hover: #20242e;
-  --color-contorno: #262a34;    /* borda do botão de contorno */
-  --color-pilula-hover: #191d26;
-  --color-destaque: #15131d;    /* fundo da pílula do alerta mais grave */
-  --color-balao: #121419;       /* tooltip e balão do incidente */
-  --color-fibra-hover: #b185ee;
-  --color-risco: #6a5bd0;       /* risco de alerta na régua do caminho */
-  --color-queda: #8e3a66;       /* bloco de queda na régua do caminho */
+  --color-titulo: #f0f0f3;      /* título de página em migalha */
+  --color-ativo: #19191d;       /* item ativo da barra lateral: cinza neutro */
+  --color-avatar: #2d2d33;
+  --color-quieto: #19191d;      /* botão cinza cheio */
+  --color-quieto-hover: #222228;
+  --color-contorno: #2a2a31;    /* borda do botão de contorno */
+  --color-pilula-hover: #1e1e23;
+  --color-destaque: #18151c;    /* fundo da pílula do alerta mais grave */
+  --color-balao: #121215;       /* tooltip e balão do incidente */
+  --color-fibra-hover: #ffffff;
+  --color-risco: #cfcfd4;       /* risco de alerta na régua do caminho (cinza no Grafite) */
+  --color-queda: #5f5f67;       /* bloco de queda na régua do caminho (cinza no Grafite) */
+}
+
+/* ===========================================================================
+   Acentos escolhíveis nas preferências (data-acento no <html>). O padrão (sem
+   atributo) é o Grafite definido acima. Cada acento só mexe na cor primária.
+   =========================================================================== */
+:root[data-acento="roxo"]  { --color-fibra:#8b5cf6; --color-fibra-hover:#9d75f8; --color-sobre-fibra:#ffffff; }
+:root[data-acento="azul"]  { --color-fibra:#3b82f6; --color-fibra-hover:#589bf8; --color-sobre-fibra:#ffffff; }
+:root[data-acento="verde"] { --color-fibra:#10b981; --color-fibra-hover:#34c99a; --color-sobre-fibra:#042b20; }
+:root[data-acento="ambar"] { --color-fibra:#f59e0b; --color-fibra-hover:#fbb12e; --color-sobre-fibra:#231402; }
+:root[data-acento="rosa"]  { --color-fibra:#ec4899; --color-fibra-hover:#f163a9; --color-sobre-fibra:#ffffff; }
+/* Com um acento colorido escolhido, as severidades voltam a ter cor (significado). Grafite fica cinza. */
+:root[data-acento] {
+  --color-led:#3ecf8e; --color-desastre:#e26a7d; --color-alta:#e38b99; --color-media:#c290dc; --color-aviso:#a597e2;
+  --color-limite:#c76b84; --color-risco:#c76b84; --color-queda:#8e3a66;
 }
 
 /* Tema claro: mesma hierarquia; primário no roxo exato da marca #521B89. */
@@ -62,35 +80,132 @@
   --color-tinta-2: #4a4160;
   --color-tinta-3: #756b89;
   --color-tinta-4: #a79fb8;
-  --color-fibra: #521b89;
-  --color-radio: #1f8f9c;
-  --color-led: #1f9d5f;
-  --color-desastre: #d9415c;
-  --color-alta: #d9606f;
-  --color-media: #b45ccf;
-  --color-aviso: #7a5fd0;
-  --color-fio: rgb(30 15 45 / 0.09);
-  --color-fio-forte: rgb(30 15 45 / 0.16);
-  --color-realce: rgb(30 15 45 / 0.045);
-  --color-limite: #d9718a;
-  --color-normal: #c9b3bd;
-  --color-eixo: #e2dcee;
-  --color-titulo: #251a35;
-  --color-ativo: #ece4fb;
-  --color-avatar: #521b89;
-  --color-quieto: #ebe7f3;
-  --color-quieto-hover: #e0daee;
-  --color-contorno: #d2ccdf;
-  --color-pilula-hover: #e6e0f2;
-  --color-destaque: #fbeef4;
+  --color-fibra: #1b1b20;       /* acento padrão no claro = quase preto (Grafite) */
+  --color-radio: #71717a;
+  --color-led: #52525b;         /* Grafite claro: monocromático (mais escuro = mais grave) */
+  --color-desastre: #18181b;
+  --color-alta: #3f3f46;
+  --color-media: #71717a;
+  --color-aviso: #9b9ba3;
+  --color-fio: rgb(15 15 20 / 0.10);
+  --color-fio-forte: rgb(15 15 20 / 0.17);
+  --color-realce: rgb(15 15 20 / 0.045);
+  --color-limite: #52525b;
+  --color-normal: #c9c9d2;
+  --color-eixo: #e6e6ec;
+  --color-titulo: #16161a;
+  --color-ativo: #ececef;
+  --color-avatar: #2d2d33;
+  --color-quieto: #ededf0;
+  --color-quieto-hover: #e3e3e8;
+  --color-contorno: #d7d7de;
+  --color-pilula-hover: #e8e8ed;
+  --color-destaque: #f6eef4;
   --color-balao: #ffffff;
-  --color-fibra-hover: #3f1470;
-  --color-risco: #7a5fd0;
-  --color-queda: #d97aa0;
+  --color-fibra-hover: #000000;
+  --color-sobre-fibra: #ffffff;  /* texto sobre o acento escuro do claro */
+  --color-risco: #3f3f46;
+  --color-queda: #a1a1aa;
+}
+/* Acentos no tema claro (os coloridos valem nos dois temas; o Grafite muda por tema) */
+:root[data-tema="claro"][data-acento="roxo"]  { --color-fibra:#7c3aed; --color-fibra-hover:#6d28d9; --color-sobre-fibra:#fff; }
+:root[data-tema="claro"][data-acento="azul"]  { --color-fibra:#2563eb; --color-fibra-hover:#1d4ed8; --color-sobre-fibra:#fff; }
+:root[data-tema="claro"][data-acento="verde"] { --color-fibra:#059669; --color-fibra-hover:#047857; --color-sobre-fibra:#fff; }
+:root[data-tema="claro"][data-acento="ambar"] { --color-fibra:#d97706; --color-fibra-hover:#b45309; --color-sobre-fibra:#fff; }
+:root[data-tema="claro"][data-acento="rosa"]  { --color-fibra:#db2777; --color-fibra-hover:#be185d; --color-sobre-fibra:#fff; }
+/* Severidades voltam a ter cor no claro quando há um acento colorido */
+:root[data-tema="claro"][data-acento] {
+  --color-led:#1f9d5f; --color-desastre:#d9415c; --color-alta:#d9606f; --color-media:#b45ccf; --color-aviso:#7a5fd0;
+  --color-limite:#d9718a; --color-risco:#b5507a; --color-queda:#d97aa0;
 }
 
 html { color-scheme: dark; }
 :root[data-tema="claro"] .sombra-clara { box-shadow: 0 1px 2px rgb(30 15 45 / .06), 0 4px 12px rgb(30 15 45 / .05); }
+
+/* Sombra dos cards (estilo Sentinel): fio interno + sombra suave que dá profundidade sem pesar.
+   Transição para o leve realce da borda ao passar o mouse. */
+.sombra-card {
+  box-shadow: 0 1px 2px rgb(0 0 0 / .45), 0 10px 28px -12px rgb(0 0 0 / .55), inset 0 1px 0 rgb(255 255 255 / .03);
+  transition: border-color var(--duracao-media, 250ms) var(--curva-suave, ease), box-shadow var(--duracao-media, 250ms) var(--curva-suave, ease), transform var(--duracao-media, 250ms) var(--curva-suave, ease);
+  will-change: transform;
+}
+:root[data-tema="claro"] .sombra-card {
+  box-shadow: 0 1px 2px rgb(15 15 25 / .05), 0 10px 26px -14px rgb(15 15 25 / .14), inset 0 1px 0 rgb(255 255 255 / .6);
+}
+/* Hover-lift: o card sobe um pouco e a sombra abre, só no mouse fino. */
+@media (hover: hover) and (pointer: fine) {
+  .sombra-card:hover {
+    border-color: var(--color-fio-forte);
+    transform: translateY(-3px);
+    box-shadow: 0 2px 4px rgb(0 0 0 / .45), 0 22px 44px -16px rgb(0 0 0 / .7), inset 0 1px 0 rgb(255 255 255 / .05);
+  }
+  :root[data-tema="claro"] .sombra-card:hover {
+    box-shadow: 0 2px 6px rgb(15 15 25 / .08), 0 22px 40px -18px rgb(15 15 25 / .2), inset 0 1px 0 rgb(255 255 255 / .7);
+  }
+}
+@media (prefers-reduced-motion: reduce) { .sombra-card { transition: none; } .sombra-card:hover { transform: none; } }
+
+/* Troca de tela: a página entra subindo de leve e surgindo, a cada mudança de rota. */
+@keyframes troca-tela { from { opacity: 0; transform: translateY(10px); } }
+.troca-tela { animation: troca-tela 300ms var(--curva-suave, ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .troca-tela { animation: none; } }
+
+/* Cartões de LISTA não sobem no hover — quem reage é cada linha, individualmente. */
+.sombra-card.sem-lift:hover { transform: none; box-shadow: 0 1px 2px rgb(0 0 0 / .45), 0 10px 28px -12px rgb(0 0 0 / .55), inset 0 1px 0 rgb(255 255 255 / .03); }
+:root[data-tema="claro"] .sombra-card.sem-lift:hover { box-shadow: 0 1px 2px rgb(15 15 25 / .05), 0 10px 26px -14px rgb(15 15 25 / .14), inset 0 1px 0 rgb(255 255 255 / .6); }
+
+/* Linha de lista/tabela: fundo + barra de acento à esquerda ao passar o mouse (cada uma por si). */
+.linha-hover { transition: background-color 160ms var(--curva-suave), box-shadow 160ms var(--curva-suave); }
+@media (hover: hover) and (pointer: fine) {
+  .linha-hover:hover { background: color-mix(in srgb, var(--color-fibra) 7%, transparent); box-shadow: inset 2px 0 0 0 var(--color-fibra); }
+}
+/* Pílula de lista (cartões do dashboard): desliza um tico à direita no hover. */
+.pilula-x { transition: transform 150ms var(--curva-suave), background-color 150ms var(--curva-suave); }
+@media (hover: hover) and (pointer: fine) { .pilula-x:hover { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .linha-hover, .pilula-x { transition: none; } .pilula-x:hover { transform: none; } }
+
+/* Botão flutuante do chat: respiro discreto da sombra (toque profissional) + leve subida no hover. */
+@keyframes chat-respira {
+  0%, 100% { box-shadow: 0 8px 24px rgb(0 0 0 / .28); }
+  50%      { box-shadow: 0 12px 30px rgb(0 0 0 / .42), 0 0 0 6px color-mix(in srgb, var(--color-fibra) 12%, transparent); }
+}
+.chat-fab { animation: chat-respira 3.6s ease-in-out infinite; }
+@media (hover: hover) and (pointer: fine) { .chat-fab:hover { transform: translateY(-2px) scale(1.03); } }
+@media (prefers-reduced-motion: reduce) { .chat-fab { animation: none; } .chat-fab:hover { transform: none; } }
+
+/* Modo de edição do painel: cada moldura tracejada surge com um leve zoom + a alça desce. */
+@keyframes edit-entra { from { opacity: 0; transform: scale(.985); } }
+.edit-entra { animation: edit-entra 240ms var(--curva-suave) both; }
+@keyframes alca-entra { from { opacity: 0; transform: translateY(-6px); } }
+.alca-entra { animation: alca-entra 260ms var(--curva-suave) both; animation-delay: 60ms; }
+@media (prefers-reduced-motion: reduce) { .edit-entra, .alca-entra { animation: none; } }
+
+/* Realce "ao vivo": quando um número muda no polling, um brilho curto passa atrás dele. */
+@keyframes num-flash-wrap { from { background: color-mix(in srgb, var(--color-fibra) 18%, transparent); } to { background: transparent; } }
+.num-vivo.anima { animation: num-flash-wrap 760ms var(--curva-suave); border-radius: 5px; }
+@media (prefers-reduced-motion: reduce) { .num-vivo.anima { animation: none; } }
+
+/* Ícone da aba ativa dá um "pop" e fica levemente maior. */
+.icone-nav { transition: transform var(--duracao-media, 250ms) var(--curva-suave); }
+@keyframes icone-pop { 0% { transform: scale(1); } 45% { transform: scale(1.22); } 100% { transform: scale(1.08); } }
+.icone-nav-ativo { animation: icone-pop 360ms var(--curva-suave) both; transform: scale(1.08); }
+@media (prefers-reduced-motion: reduce) { .icone-nav-ativo { animation: none; } }
+
+/* Densidade compacta: mais dados por tela (bom para TV/NOC). */
+:root[data-densidade="compacto"] body { font-size: 12.5px; }
+:root[data-densidade="compacto"] section.sombra-card { padding: 15px 17px; }
+:root[data-densidade="compacto"] .titulo-pagina { font-size: 20px; }
+
+/* Virtualização leve: o navegador pula o render do que está fora da tela (listas longas, sem biblioteca). */
+.virtual-linha { content-visibility: auto; contain-intrinsic-size: auto 56px; }
+
+/* Impressão / "Salvar em PDF": só a área principal, sem barras/chat; mantém as cores do painel. */
+@media print {
+  aside, header, nav, .chat-fab, [data-print-hide] { display: none !important; }
+  main { padding: 12px !important; max-width: none !important; }
+  .sombra-card:hover { transform: none !important; }
+  html, body, .sombra-card, [class*="bg-"] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 body {
   @apply bg-rack text-tinta font-sans antialiased;
   font-size: 13.5px;
@@ -113,6 +228,8 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.012em; text-wr
 }
 
 :focus-visible { outline: 2px solid var(--color-fibra); outline-offset: 2px; border-radius: 6px; }
+/* Campos de texto já indicam foco pela borda; o anel grande neles fica com cara de bug (sobretudo quando autofocados). */
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-fio-forte); border-radius: 10px; }
