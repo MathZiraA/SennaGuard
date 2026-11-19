@@ -1,6 +1,7 @@
 import type { Enlace, Visao } from '../lib/api'
 import { desde, hora, ms } from '../lib/fmt'
 import { Led } from './ui'
+import CountUp from './CountUp'
 
 type Estado = 'ativo' | 'espera' | 'fora'
 const corEnlace = { fibra: 'var(--color-fibra)', radio: 'var(--color-radio)' }
@@ -79,12 +80,12 @@ export default function Trilho({ v, onNo }: { v: Visao; onNo?: (nome: string) =>
         {f && (
           <div className="flex items-end gap-6 text-right">
             <div>
-              <div className="num text-[28px] font-semibold leading-none tracking-[-0.02em] text-fibra">{f.segundos.toLocaleString('pt-BR')}<span className="ml-0.5 text-[15px] text-tinta-3">s</span></div>
+              <div className="num text-[28px] font-semibold leading-none tracking-[-0.02em] text-fibra"><CountUp to={f.segundos} duration={1.2} trigger="load" decimalSeparator="," /><span className="ml-0.5 text-[15px] text-tinta-3">s</span></div>
               <div className="mt-1.5 text-[11px] text-tinta-3">último failover · {hora(f.em)}</div>
             </div>
             {v.disponibilidade_24h && (
               <div>
-                <div className="num text-[28px] font-semibold leading-none tracking-[-0.02em]">{v.disponibilidade_24h.filial.toLocaleString('pt-BR')}<span className="ml-0.5 text-[15px] text-tinta-3">%</span></div>
+                <div className="num text-[28px] font-semibold leading-none tracking-[-0.02em]"><CountUp to={v.disponibilidade_24h.filial} from={90} duration={1.4} trigger="load" decimalSeparator="," /><span className="ml-0.5 text-[15px] text-tinta-3">%</span></div>
                 <div className="mt-1.5 text-[11px] text-tinta-3">Filial no ar · 24 h</div>
               </div>
             )}

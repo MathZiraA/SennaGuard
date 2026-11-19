@@ -1,14 +1,14 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import * as Menu from '@radix-ui/react-dropdown-menu'
-import { ArrowDown, ArrowsClockwise, ArrowsOut, ArrowUp, CalendarBlank, CaretDown, CaretRight, CellSignalFull, CellSignalX, Cpu, DotsSixVertical, DownloadSimple, Eye, EyeSlash, FileText, LinkBreak, LinkSimple, MagnifyingGlassMinus, Plus, SlidersHorizontal, SquaresFour } from '@phosphor-icons/react'
+import { ArrowDown, Check, ArrowsClockwise, ArrowsOut, ArrowUp, CalendarBlank, CaretDown, CaretRight, CellSignalFull, CellSignalX, Cpu, DotsSixVertical, DownloadSimple, Eye, EyeSlash, FileText, LinkBreak, LinkSimple, MagnifyingGlassMinus, Plus, SlidersHorizontal, SquaresFour } from '@phosphor-icons/react'
 import { api, useApi, type Alerta, type LinkWan, type ListaChamados, type Painel, type Ponto, type Visao as TVisao } from '../lib/api'
 import { dataHora, desde, duracao, hora } from '../lib/fmt'
 import { useSessao } from '../lib/sessao'
-import Grafico, { faixasSemResposta, type Limite } from '../components/Grafico'
+import Grafico, { GraficosCruzados, faixasSemResposta, type Limite } from '../components/Grafico'
 import { StatusChamado } from '../components/Atendimento'
 import Modal from '../components/Modal'
-import { Botao, Card, Carregando, Chip } from '../components/ui'
+import { Botao, Card, Carregando, Chip, RotuloTroca, Segmentado, ValorTrocavel } from '../components/ui'
 
 // Até 30 min: 1 ponto por segundo (sonda do servidor), para demonstrar queda e volta ao vivo
 const CURTO = 0.5
@@ -101,6 +101,9 @@ export default function Visao() {
   const padrao = ['contexto', 'latencia', interno ? 'alertas' : 'chamados', 'trafego', 'caminho', ...(interno ? ['internet'] : [])]
   const [rascunho, setRascunho] = useState<Painel | null>(null) // != null = editando o painel
   const [arrastando, setArrastando] = useState<string | null>(null)
+  // A entrada escalonada dos cartões acontece uma vez, ao abrir a tela (não repete ao sair do modo de edição)
+  const [entrando, setEntrando] = useState(true)
+  useEffect(() => { const t = setTimeout(() => setEntrando(false), 900); return () => clearTimeout(t) }, [])
   const painel = rascunho ?? montar(eu?.painel ?? null, padrao)
 
   const periodo = recorte ? `de=${recorte.de}&ate=${recorte.ate}` : `horas=${horas}`
@@ -139,16 +142,17 @@ export default function Visao() {
     contexto: v ? <Contexto v={v} interno={interno} /> : <Carregando erro={erroV} onTentar={recarregarV} altura="h-[52px]" />,
     latencia: (
       <Card className="h-full md:!px-9 md:!pt-7 !pb-5"
-        titulo={enlace === 'fibra' ? 'Latência da fibra' : 'Latência do rádio'}
-        extra={<Valor valor={atual == null ? 'sem resposta' : `${atual.toLocaleString('pt-BR')} ms`} erro={atual == null} cor={cor} quando={recorte ? undefined : ultimo?.t} />}
-        acao={<div className="flex gap-1.5">
-          <Chip ativo={enlace === 'fibra'} onClick={() => setEnlace('fibra')}>Fibra</Chip>
-          <Chip ativo={enlace === 'radio'} onClick={() => setEnlace('radio')}>Rádio</Chip>
+        titulo={<ValorTrocavel chave={enlace} texto={enlace === 'fibra' ? 'Latência da fibra' : 'Latência do rádio'} />}
+        extra={<Valor chave={enlace} numero={atual} valor={atual == null ? 'sem resposta' : `${atual.toLocaleString('pt-BR')} ms`} erro={atual == null} cor={cor} quando={recorte ? undefined : ultimo?.t} />}
+        acao={<div className="flex items-center gap-2">
+          <Segmentado rotulo="Enlace" valor={enlace} onChange={setEnlace} opcoes={[{ v: 'fibra', rotulo: 'Fibra' }, { v: 'radio', rotulo: 'Rádio' }]} />
           <Chip ativo={comLimites} onClick={() => setComLimites(!comLimites)}><SlidersHorizontal />Limites</Chip>
         </div>}>
-        {lat ? <Grafico dados={lat} serie={enlace} cor={cor} unidade="ms" altura={250} onZoom={zoom}
-          limites={comLimites ? LIMITES[enlace] : []}
-          faixas={faixasSemResposta(lat, enlace, enlace === 'fibra' ? 'Fibra fora' : 'Rádio fora')} />
+        {lat ? <GraficosCruzados ativa={enlace} graficos={(['fibra', 'radio'] as const).map(e => ({
+          chave: e,
+          no: <Grafico dados={lat} serie={e} cor={e === 'fibra' ? 'var(--color-fibra)' : 'var(--color-radio)'} unidade="ms" altura={250} onZoom={zoom}
+            limites={comLimites ? LIMITES[e] : []} faixas={faixasSemResposta(lat, e, e === 'fibra' ? 'Fibra fora' : 'Rádio fora')} />,
+        }))} />
           : <div className="h-[250px]" />}
       </Card>
     ),
@@ -157,7 +161,7 @@ export default function Visao() {
     internet: <CardInternet i={v?.internet} wan={wan} onZoom={zoom} />,
     trafego: (
       <Card className="h-full md:!px-9 md:!pt-7 !pb-5" titulo="Tráfego na Filial"
-        extra={<Valor valor={mbps == null ? '—' : `${mbps.toLocaleString('pt-BR', { maximumFractionDigits: mbps < 10 ? 2 : 0 })} Mbps`} cor="var(--color-fibra)" quando={recorte ? undefined : trf?.[trf.length - 1]?.t} />}>
+        extra={<Valor numero={mbps} valor={mbps == null ? '—' : `${mbps.toLocaleString('pt-BR', { maximumFractionDigits: mbps < 10 ? 2 : 0 })} Mbps`} cor="var(--color-fibra)" quando={recorte ? undefined : trf?.[trf.length - 1]?.t} />}>
         {trafego ? <Grafico dados={trafego} serie="mbps" cor="var(--color-fibra)" unidade="Mbps" altura={150} onZoom={zoom}
           limites={comLimites && media ? [{ valor: Math.round(media * 100) / 100, rotulo: 'Média', tipo: 'normal' }] : []} />
           : <div className="h-[150px]" />}
@@ -194,36 +198,42 @@ export default function Visao() {
           <div className="flex flex-wrap gap-2.5">
             {recorte && <Botao variante="contorno" onClick={() => setRecorte(null)}><MagnifyingGlassMinus />Voltar para {periodos.find(p => p.h === horas)?.r.toLowerCase()}</Botao>}
             <Menu.Root>
-              <Menu.Trigger asChild><Botao variante="contorno" data-tour="periodo">
-                {recorte ? <span className="num">{dataHora(recorte.de)} – {dataHora(recorte.ate)}</span> : periodos.find(p => p.h === horas)?.r}<CaretDown weight="fill" />
+              <Menu.Trigger asChild><Botao variante="contorno" data-tour="periodo" className="t-gatilho">
+                <RotuloTroca className="num" texto={recorte ? `${dataHora(recorte.de)} – ${dataHora(recorte.ate)}` : periodos.find(p => p.h === horas)?.r ?? ''} /><CaretDown weight="fill" />
               </Botao></Menu.Trigger>
               <Menu.Portal>
                 <Menu.Content align="end" sideOffset={6} className="z-50 min-w-48 rounded-lg border border-fio-forte bg-painel-alto p-1 text-[12.5px] shadow-2xl">
-                  {periodos.map(p => (
-                    <Menu.Item key={p.h} onSelect={() => { setHoras(p.h); setRecorte(null) }}
-                      className={`${itemMenu} ${!recorte && p.h === horas ? '!text-fibra' : ''}`}>{p.r}</Menu.Item>
-                  ))}
+                  <Menu.RadioGroup value={recorte ? '' : String(horas)} onValueChange={v => { setHoras(Number(v)); setRecorte(null) }}>
+                    {periodos.map(p => (
+                      <Menu.RadioItem key={p.h} value={String(p.h)} className={`${itemMenu} justify-between gap-3 data-[state=checked]:bg-realce data-[state=checked]:text-tinta`}>
+                        {p.r}<Menu.ItemIndicator><Check size={13} weight="bold" /></Menu.ItemIndicator>
+                      </Menu.RadioItem>
+                    ))}
+                  </Menu.RadioGroup>
                   <div className="my-1 h-px bg-fio" />
                   <Menu.Item onSelect={() => setEscolhendo(true)} className={`${itemMenu} gap-2`}><CalendarBlank size={14} />Personalizado…</Menu.Item>
                 </Menu.Content>
               </Menu.Portal>
             </Menu.Root>
             <Menu.Root>
-              <Menu.Trigger asChild><Botao variante="contorno" title="Atualizar a cada">
-                <ArrowsClockwise />{ritmos.find(r => r.ms === ritmo)?.r}<CaretDown weight="fill" />
+              <Menu.Trigger asChild><Botao variante="contorno" title="Atualizar a cada" className="t-gatilho">
+                <ArrowsClockwise /><RotuloTroca texto={ritmos.find(r => r.ms === ritmo)?.r ?? ''} /><CaretDown weight="fill" />
               </Botao></Menu.Trigger>
               <Menu.Portal>
                 <Menu.Content align="end" sideOffset={6} className="z-50 min-w-44 rounded-lg border border-fio-forte bg-painel-alto p-1 text-[12.5px] shadow-2xl">
                   <div className="px-2.5 pb-1 pt-1.5 text-[11px] text-tinta-3">Atualizar a cada</div>
-                  {ritmos.map(r => (
-                    <Menu.Item key={r.ms} onSelect={() => escolherRitmo(r.ms)}
-                      className={`${itemMenu} ${r.ms === ritmo ? '!text-fibra' : ''}`}>{r.r}</Menu.Item>
-                  ))}
+                  <Menu.RadioGroup value={String(ritmo)} onValueChange={v => escolherRitmo(Number(v))}>
+                    {ritmos.map(r => (
+                      <Menu.RadioItem key={r.ms} value={String(r.ms)} className={`${itemMenu} justify-between gap-3 data-[state=checked]:bg-realce data-[state=checked]:text-tinta`}>
+                        {r.r}<Menu.ItemIndicator><Check size={13} weight="bold" /></Menu.ItemIndicator>
+                      </Menu.RadioItem>
+                    ))}
+                  </Menu.RadioGroup>
                 </Menu.Content>
               </Menu.Portal>
             </Menu.Root>
             <Menu.Root>
-              <Menu.Trigger asChild><Botao><FileText />Exportar relatório</Botao></Menu.Trigger>
+              <Menu.Trigger asChild><Botao className="t-gatilho"><FileText />Exportar relatório</Botao></Menu.Trigger>
               <Menu.Portal>
                 <Menu.Content align="end" sideOffset={6} className="z-50 min-w-56 rounded-lg border border-fio-forte bg-painel-alto p-1 text-[12.5px] shadow-2xl">
                   {pode('relatorios') && <>
@@ -248,7 +258,7 @@ export default function Visao() {
         {painel.ordem.filter(id => rascunho || !painel.ocultos.includes(id)).map((id, i) => {
           const oculto = painel.ocultos.includes(id)
           return (
-            <div key={id} data-tour={id} className={`relative min-w-0 ${LARGURA[CARTOES[id].tamanho]} ${rascunho && oculto ? 'opacity-35' : ''} ${arrastando === id ? 'opacity-50' : ''}`}
+            <div key={id} data-tour={id} style={{ '--i': i } as React.CSSProperties} className={`relative min-w-0 ${entrando && !rascunho ? 'entra-escalonado' : ''} ${LARGURA[CARTOES[id].tamanho]} ${rascunho && oculto ? 'opacity-35' : ''} ${arrastando === id ? 'opacity-50' : ''}`}
               draggable={!!rascunho} onDragStart={e => { setArrastando(id); e.dataTransfer.effectAllowed = 'move' }} onDragEnd={() => setArrastando(null)}
               onDragOver={e => { if (rascunho && arrastando) e.preventDefault() }}
               onDrop={e => { e.preventDefault(); if (arrastando && arrastando !== id) mover(arrastando, rascunho!.ordem.indexOf(id)); setArrastando(null) }}>
@@ -318,10 +328,10 @@ function EscolherPeriodo({ inicial, onEscolher }: { inicial: Recorte | null; onE
   )
 }
 
-function Valor({ valor, cor, quando, erro = false }: { valor: string; cor: string; quando?: number; erro?: boolean }) {
+function Valor({ valor, numero, chave = '', cor, quando, erro = false }: { valor: string; numero?: number | null; chave?: string; cor: string; quando?: number; erro?: boolean }) {
   return (
     <span className="flex items-baseline gap-2">
-      <span className="num text-[17px] font-semibold" style={{ color: erro ? 'var(--color-desastre)' : cor }}>{valor}</span>
+      <ValorTrocavel chave={chave} texto={valor} valor={numero} className="text-[17px] font-semibold transition-colors duration-300" style={{ color: erro ? 'var(--color-desastre)' : cor }} />
       {quando && <span className="text-[10.5px] text-tinta-3">há {desde(quando)}</span>}
     </span>
   )
@@ -418,7 +428,6 @@ function CardChamados({ ch }: { ch: ListaChamados | null }) {
 /** Links de internet do R-MATRIZ: VIVO (principal) e TIN (backup); o ativo segue a regra do roteador. */
 function CardInternet({ i, wan, onZoom }: { i: TVisao['internet']; wan: Ponto[] | null; onZoom: (de: number, ate: number) => void }) {
   const [link, setLink] = useState<'vivo' | 'tin'>('vivo')
-  const corLink = link === 'vivo' ? 'var(--color-fibra)' : 'var(--color-radio)'
   const pilula = i == null ? null : i.ativo == null
     ? <span className="inline-flex items-center gap-1.5 rounded-full bg-desastre/15 px-2 py-0.5 text-[11px] font-semibold text-desastre"><span className="size-1.5 rounded-full bg-current" />Sem internet</span>
     : <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${i.ativo === 'vivo' ? 'bg-led/15 text-led' : 'bg-radio/15 text-radio'}`}>
@@ -440,12 +449,10 @@ function CardInternet({ i, wan, onZoom }: { i: TVisao['internet']; wan: Ponto[] 
         </ul>
         <div className="mt-3 flex items-center justify-between text-[11px] text-tinta-2">
           Download por link
-          <span className="flex gap-1.5">
-            <Chip ativo={link === 'vivo'} onClick={() => setLink('vivo')}>VIVO</Chip>
-            <Chip ativo={link === 'tin'} onClick={() => setLink('tin')}>TIN</Chip>
-          </span>
+          <Segmentado rotulo="Link de internet" valor={link} onChange={setLink} opcoes={[{ v: 'vivo', rotulo: 'VIVO' }, { v: 'tin', rotulo: 'TIN' }]} />
         </div>
-        {wan?.length ? <Grafico dados={wan} serie={link} cor={corLink} unidade="Mbps" altura={120} onZoom={onZoom} />
+        {wan?.length ? <GraficosCruzados ativa={link} graficos={(['vivo', 'tin'] as const).map(l => ({
+          chave: l, no: <Grafico dados={wan} serie={l} cor={l === 'vivo' ? 'var(--color-fibra)' : 'var(--color-radio)'} unidade="Mbps" altura={120} onZoom={onZoom} /> }))} />
           : <p className="py-6 text-center text-[12px] text-tinta-3">Coletando o tráfego dos links…</p>}
       </>}
     </Card>

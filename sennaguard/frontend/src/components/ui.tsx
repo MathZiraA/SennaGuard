@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react'
 import { corSev } from '../lib/fmt'
 
 export function Card({ titulo, extra, acao, children, className = '' }: {
@@ -66,16 +66,113 @@ export function Sev({ nome: original }: { nome: string }) {
   )
 }
 
-export function Segmentado<T extends string>({ opcoes, valor, onChange }: { opcoes: { v: T; rotulo: ReactNode }[]; valor: T; onChange: (v: T) => void }) {
+/** Abas no modelo do "cartão de latência": trilho em cápsula e pílula que desliza até a aba escolhida.
+ *  A 1ª posição é escrita sem transição (senão a pílula "voa" do canto); redimensionar também não anima. */
+export function Segmentado<T extends string>({ opcoes, valor, onChange, rotulo }: { opcoes: { v: T; rotulo: ReactNode }[]; valor: T; onChange: (v: T) => void; rotulo?: string }) {
+  const trilho = useRef<HTMLDivElement>(null)
+  const [pilula, setPilula] = useState<{ x: number; w: number; anima: boolean } | null>(null)
+  const medir = (anima: boolean) => {
+    const b = trilho.current?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (b) setPilula({ x: b.offsetLeft, w: b.offsetWidth, anima })
+  }
+  useLayoutEffect(() => { medir(pilula !== null) }, [valor]) // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    let primeira = true
+    const ro = new ResizeObserver(() => { if (primeira) { primeira = false; return } medir(false) })
+    if (trilho.current) ro.observe(trilho.current)
+    return () => ro.disconnect()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Setas do teclado trocam de aba, como num tablist
+  const teclas = (e: React.KeyboardEvent) => {
+    const i = opcoes.findIndex(o => o.v === valor)
+    const prox = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null
+    if (prox == null || !opcoes[prox]) return
+    e.preventDefault(); onChange(opcoes[prox].v)
+    requestAnimationFrame(() => trilho.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus())
+  }
   return (
-    <div className="inline-flex rounded-lg border border-fio bg-fenda p-0.5">
+    <div ref={trilho} role="tablist" aria-label={rotulo} onKeyDown={teclas} className="t-tabs">
+      {pilula && <span aria-hidden className={`t-tabs-pill ${pilula.anima ? 'pilula-desliza' : ''}`} style={{ transform: `translateX(${pilula.x}px)`, width: pilula.w }} />}
       {opcoes.map(o => (
-        <button key={o.v} aria-pressed={valor === o.v} onClick={() => onChange(o.v)}
-          className={`h-7 rounded-md px-2.5 text-[12px] font-medium transition-[background-color,color] duration-150 ${valor === o.v ? 'bg-painel-alto text-tinta shadow-[0_1px_2px_rgb(0_0_0/0.12)]' : 'text-tinta-3 hover:text-tinta-2'}`}>
+        <button key={o.v} type="button" role="tab" aria-selected={valor === o.v} tabIndex={valor === o.v ? 0 : -1}
+          onClick={() => valor !== o.v && onChange(o.v)} className="t-tab inline-flex items-center gap-1.5 [&_svg]:size-3.5">
           {o.rotulo}
         </button>
       ))}
     </div>
+  )
+}
+
+/** Rótulo de gatilho no modelo do "Workspace Switcher": ao escolher outra opção, o texto antigo sobe e
+ *  desfoca (--text-swap-dur), e o novo entra de baixo. */
+export function RotuloTroca({ texto, className = '' }: { texto: string; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [mostrado, setMostrado] = useState(texto)
+  useEffect(() => {
+    if (texto === mostrado) return
+    ref.current?.classList.add('is-exit')
+    const ms = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--text-swap-dur')) || 150
+    const t = setTimeout(() => setMostrado(texto), ms)
+    return () => clearTimeout(t)
+  }, [texto]) // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el?.classList.contains('is-exit')) return
+    el.classList.remove('is-exit'); el.classList.add('is-enter-start')
+    void el.offsetHeight // reflow: o próximo quadro parte de baixo e desfocado
+    el.classList.remove('is-enter-start')
+  }, [mostrado])
+  return <span ref={ref} className={`t-text-swap ${className}`}>{mostrado}</span>
+}
+
+/** Valor no modelo do "cartão de latência": quando a `chave` muda (outra aba), o texto antigo e o novo se
+ *  cruzam no mesmo lugar com desfoque e a largura acompanha; quando só o número muda (dado ao vivo), usa o
+ *  NumeroVivo (dígitos que sobem ou descem). */
+export function ValorTrocavel({ texto, valor, chave, className = '', style }: { texto: string; valor?: number | null; chave: string; className?: string; style?: CSSProperties }) {
+  const [e, setE] = useState({ chave, texto, velho: null as string | null, n: 0 })
+  if (chave !== e.chave) setE({ chave, texto, velho: e.texto, n: e.n + 1 })
+  else if (texto !== e.texto) setE({ ...e, texto })
+  const ref = useRef<HTMLSpanElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!e.n || !el) return
+    const novo = el.querySelector<HTMLElement>('.t-text-soft-new'), velho = el.querySelector<HTMLElement>('.t-text-soft-old')
+    if (!novo || !velho) return
+    el.style.width = `${velho.getBoundingClientRect().width}px`
+    void el.offsetWidth
+    el.classList.add('is-swapping')
+    el.style.width = `${novo.getBoundingClientRect().width}px`
+    const css = getComputedStyle(document.documentElement)
+    const ms = Math.max(parseFloat(css.getPropertyValue('--text-soft-dur')) || 200, parseFloat(css.getPropertyValue('--text-soft-resize-dur')) || 240) + 40
+    const t = setTimeout(() => setE(x => (x.n === e.n ? { ...x, velho: null } : x)), ms)
+    return () => clearTimeout(t)
+  }, [e.n]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (e.velho === null) return <NumeroVivo texto={texto} valor={valor} className={className} style={style} />
+  return (
+    <span ref={ref} key={e.n} aria-label={texto} className={`t-text-soft num ${className}`} style={style}>
+      <span className="t-text-soft-old" aria-hidden>{e.velho}</span>
+      <span className="t-text-soft-new" aria-hidden>{texto}</span>
+    </span>
+  )
+}
+
+/** Número que muda ao vivo (latência, Mbps…): só os caracteres trocados cruzam, subindo se o valor subiu.
+ *  `valor` dá a direção; `texto` é o que aparece já formatado. Leitores de tela leem só o texto final. */
+export function NumeroVivo({ texto, valor, className = '', style }: { texto: string; valor?: number | null; className?: string; style?: CSSProperties }) {
+  // Estado derivado (padrão do React para "valor anterior"): seguro também no modo estrito
+  const [e, setE] = useState({ texto, valor, velho: texto, dir: 1, troca: 0 })
+  if (texto !== e.texto) {
+    const dir = valor != null && e.valor != null && valor < e.valor ? -1 : 1
+    setE({ texto, valor, velho: e.texto, dir, troca: e.troca + 1 })
+  }
+  const { velho, dir, troca } = e
+  const mesmo = velho.length === texto.length
+  return (
+    <span key={troca} aria-label={texto} className={`num-vivo ${troca ? 'anima' : ''} ${className}`} style={{ ...style, '--dir': dir } as CSSProperties}>
+      {[...texto].map((c, i) => (troca === 0 || (mesmo && velho[i] === c))
+        ? <span key={i} aria-hidden>{c}</span>
+        : <span key={i} aria-hidden className="slot">{mesmo && <span className="velho">{velho[i]}</span>}<span className="novo">{c}</span></span>)}
+    </span>
   )
 }
 

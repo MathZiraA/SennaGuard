@@ -4,9 +4,9 @@ import { Antenna, Network, Router, Server } from 'lucide-react'
 import { useApi, type Equipamento, type Ponto, type Visao } from '../lib/api'
 import { duracao, ms } from '../lib/fmt'
 import Trilho from '../components/Trilho'
-import Grafico from '../components/Grafico'
+import Grafico, { GraficosCruzados } from '../components/Grafico'
 import Modal from '../components/Modal'
-import { Card, Carregando, Chip, Led } from '../components/ui'
+import { Card, Carregando, Chip, Segmentado, Led } from '../components/ui'
 
 const icones = { roteador: Router, switch: Network, antena: Antenna, servidor: Server } as const
 
@@ -48,11 +48,9 @@ export default function Equipamentos() {
             {ultimo == null ? 'sem leitura' : `${ultimo.toLocaleString('pt-BR')} dBm`}</span>
           <span className="text-[10.5px] text-tinta-3">antena {lado === 'filial' ? 'da Filial' : 'da Matriz'} · bom entre -60 e -50 dBm</span>
         </span>}
-        acao={<div className="flex gap-1.5">
-          <Chip ativo={lado === 'filial'} onClick={() => setLado('filial')}>Filial</Chip>
-          <Chip ativo={lado === 'matriz'} onClick={() => setLado('matriz')}>Matriz</Chip>
-        </div>}>
-        {sinal ? <Grafico dados={sinal} serie={lado} cor="var(--color-radio)" unidade="dBm" altura={170} inverso limites={LIMITES_SINAL} />
+        acao={<Segmentado rotulo="Antena" valor={lado} onChange={setLado} opcoes={[{ v: 'filial', rotulo: 'Filial' }, { v: 'matriz', rotulo: 'Matriz' }]} />}>
+        {sinal ? <GraficosCruzados ativa={lado} graficos={(['filial', 'matriz'] as const).map(l => ({
+          chave: l, no: <Grafico dados={sinal} serie={l} cor="var(--color-radio)" unidade="dBm" altura={170} inverso limites={LIMITES_SINAL} /> }))} />
           : <div className="h-[170px]" />}
       </Card>
 
