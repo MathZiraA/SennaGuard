@@ -19,13 +19,13 @@ type Detalhe = Equipamento & {
 const LIMITES_SINAL = [{ valor: -60, rotulo: 'Crítico', tipo: 'critico' as const }, { valor: -53, rotulo: 'Normal', tipo: 'normal' as const }]
 
 export default function Equipamentos() {
-  const { dados } = useApi<Equipamento[]>('/api/equipamentos', 10000, ['visao'])
+  const { dados, erro: erroDados, recarregar } = useApi<Equipamento[]>('/api/equipamentos', 10000, ['visao'])
   const { dados: v } = useApi<Visao>('/api/visao', 10000, ['visao'])
   const { dados: sinal } = useApi<Ponto[]>('/api/serie/sinal?horas=24', 60000)
   const [lado, setLado] = useState<'filial' | 'matriz'>('filial')
   const [params, setParams] = useSearchParams()
   const aberto = params.get('host')
-  if (!dados) return <Carregando />
+  if (!dados) return <Carregando erro={erroDados} onTentar={recarregar} />
   const locais = [...new Set(dados.map(e => e.local || 'Sem local'))]
   const fora = dados.filter(e => !e.up).length
   const ultimo = sinal?.length ? sinal[sinal.length - 1][lado] : null
@@ -34,7 +34,7 @@ export default function Equipamentos() {
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Equipamentos</h1>
+        <h1 className="titulo-pagina">Equipamentos</h1>
         <p className="mt-1 text-tinta-3">
           {dados.length} hosts monitorados · {fora ? <span className="font-medium text-desastre">{fora} sem resposta</span> : 'todos respondendo'}
           {' '}· clique num equipamento para ver interfaces e recursos

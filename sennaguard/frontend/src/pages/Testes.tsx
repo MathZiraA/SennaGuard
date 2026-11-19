@@ -24,7 +24,7 @@ const campo = 'h-9 w-full rounded-lg border border-fio bg-fenda px-3 text-tinta 
 
 export default function Testes() {
   const { pode, eu } = useSessao()
-  const { dados, recarregar } = useApi<Teste[]>('/api/testes', 10000, ['testes'])
+  const { dados, erro: erroDados, recarregar } = useApi<Teste[]>('/api/testes', 10000, ['testes'])
   const [motivo, setMotivo] = useState('Teste semanal da redundância')
   const [quando, setQuando] = useState('')
   const [erro, setErro] = useState('')
@@ -41,7 +41,7 @@ export default function Testes() {
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Testes de failover</h1>
+        <h1 className="titulo-pagina">Testes de failover</h1>
         <p className="mt-1 text-tinta-3">A fibra (sfp1) é desligada no R-MATRIZ por 60 s e o SennaGuard mede quanto tempo a Filial fica sem resposta. Cada teste precisa da aprovação de um administrador.</p>
       </div>
 
@@ -61,7 +61,7 @@ export default function Testes() {
         </Card>
 
         <Card titulo="Histórico">
-          {!dados ? <Carregando /> : !dados.length ? <Vazio>Nenhum teste ainda.</Vazio> : (
+          {!dados ? <Carregando erro={erroDados} onTentar={recarregar} /> : !dados.length ? <Vazio>Nenhum teste ainda.</Vazio> : (
             <ul className="flex flex-col">
               {dados.map(t => {
                 const s = STATUS[t.status]

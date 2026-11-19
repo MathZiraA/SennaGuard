@@ -1,20 +1,9 @@
-import { StrictMode, type ReactNode } from 'react'
+import { StrictMode, Suspense, lazy, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import Shell from './components/Shell'
+import Shell, { LogoSG } from './components/Shell'
 import { ProvedorSessao, useSessao } from './lib/sessao'
 import Login from './pages/Login'
-import Tv from './pages/Tv'
-import Manutencoes from './pages/Manutencao'
-import Backups from './pages/Backups'
-import Testes from './pages/Testes'
-import Conhecimento from './pages/Conhecimento'
-import Visao from './pages/Visao'
-import Alertas from './pages/Alertas'
-import Chamados from './pages/Chamados'
-import Equipamentos from './pages/Equipamentos'
-import Usuarios from './pages/Usuarios'
-import Perfil from './pages/Perfil'
 import '@fontsource-variable/hanken-grotesk'
 import '@fontsource-variable/bricolage-grotesque'
 import '@fontsource-variable/inter'
@@ -25,15 +14,37 @@ import { aplicarTema } from './lib/tema'
 
 aplicarTema()
 
+// Cada tela vira um pedaço separado do pacote: o login e a primeira tela abrem sem baixar o resto (gráficos, chat, etc.)
+const Tv = lazy(() => import('./pages/Tv'))
+const Visao = lazy(() => import('./pages/Visao'))
+const Alertas = lazy(() => import('./pages/Alertas'))
+const Chamados = lazy(() => import('./pages/Chamados'))
+const Equipamentos = lazy(() => import('./pages/Equipamentos'))
+const Usuarios = lazy(() => import('./pages/Usuarios'))
+import Manutencoes from './pages/Manutencao' // a Shell já usa este módulo (faixa de manutenção)
+const Testes = lazy(() => import('./pages/Testes'))
+const Backups = lazy(() => import('./pages/Backups'))
+const Conhecimento = lazy(() => import('./pages/Conhecimento'))
+import Perfil from './pages/Perfil' // a Shell já usa este módulo (Telegram)
+
 /** Página só para quem tem a permissão; os outros voltam para a visão do enlace. */
 function Exige({ permissao, children }: { permissao: string; children: ReactNode }) {
   return useSessao().pode(permissao) ? children : <Navigate to="/" replace />
 }
 
+/** Enquanto a sessão é conferida: a marca no centro, em vez de uma tela vazia. */
+function Abertura() {
+  return (
+    <div className="grid min-h-screen place-items-center" role="status" aria-label="Carregando o SennaGuard">
+      <div className="respira"><LogoSG size={30} tile /></div>
+    </div>
+  )
+}
+
 function App() {
   const { eu, carregando } = useSessao()
-  if (useLocation().pathname === '/tv') return <Tv />  // a TV entra pelo link fixo, sem login
-  if (carregando) return null
+  if (useLocation().pathname === '/tv') return <Suspense fallback={<Abertura />}><Tv /></Suspense>  // a TV entra pelo link fixo, sem login
+  if (carregando) return <Abertura />
   if (!eu) return <Login />
   return (
     <Routes>

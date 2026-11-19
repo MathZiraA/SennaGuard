@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { Carregando } from './ui'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import * as Menu from '@radix-ui/react-dropdown-menu'
 import * as Dialog from '@radix-ui/react-dialog'
@@ -30,7 +31,7 @@ const ATALHOS_EQUIPE = ['/', '/alertas', '/chamados', '/equipamentos']
 const ATALHOS_CLIENTE = ['/', '/chamados', '/conhecimento']
 // O noc-senai-tcc é privado (o link dava 404 para o cliente); o README do SennaGuard é público
 const AJUDA = 'https://github.com/MathZiraA/sennaguard#readme'
-const item = 'flex h-8 cursor-default items-center gap-2 rounded-md px-2.5 text-tinta-2 outline-none data-[highlighted]:bg-white/5 data-[highlighted]:text-tinta'
+const item = 'flex h-8 cursor-default items-center gap-2 rounded-md px-2.5 text-tinta-2 outline-none data-[highlighted]:bg-realce data-[highlighted]:text-tinta'
 
 export default function Shell() {
   const { eu, pode, sair } = useSessao()
@@ -68,7 +69,7 @@ export default function Shell() {
     <nav className="flex flex-col gap-1" data-tour="nav">
       {permitidos.map(({ para, rotulo, icone: Icone }) => (
         <NavLink key={para} to={para} end title={compacta ? rotulo : undefined}
-          className={({ isActive }) => `flex h-10 items-center gap-3 rounded-lg text-[13.5px] transition-colors duration-150 focus-visible:outline-offset-0 ${compacta ? 'justify-center' : 'px-3.5'} ${isActive ? 'bg-ativo text-tinta' : 'text-tinta-2 hover:bg-white/[0.04] hover:text-tinta'}`}>
+          className={({ isActive }) => `relative flex h-10 items-center gap-3 rounded-lg text-[13.5px] transition-colors duration-150 focus-visible:outline-offset-0 ${compacta ? 'justify-center' : 'px-3.5'} ${isActive ? `bg-ativo font-medium text-tinta [&_svg]:text-fibra ${compacta ? '' : 'before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-fibra'}` : 'text-tinta-2 hover:bg-realce hover:text-tinta'}`}>
           <span className="relative">
             <Icone size={19} weight="fill" />
             {compacta && ponto[para] && <span className="absolute -right-1 -top-0.5 size-1.5 rounded-full" style={{ background: ponto[para]! }} />}
@@ -90,7 +91,7 @@ export default function Shell() {
             </span>
           )}
           <button onClick={alternar} aria-label={recolhida ? 'Abrir menu' : 'Recolher menu'}
-            className="grid size-7 place-items-center rounded-md text-tinta-2 transition-colors hover:bg-white/5 hover:text-tinta">
+            className="grid size-7 place-items-center rounded-md text-tinta-2 transition-colors hover:bg-realce hover:text-tinta">
             {recolhida ? <CaretDoubleRight size={16} /> : <CaretDoubleLeft size={16} />}
           </button>
         </div>
@@ -99,12 +100,12 @@ export default function Shell() {
 
         <div className="mt-auto flex flex-col gap-3">
           <a href={AJUDA} target="_blank" rel="noreferrer" title="Central de ajuda"
-            className={`flex h-10 items-center gap-3 rounded-lg text-[13.5px] text-tinta-2 transition-colors hover:bg-white/[0.04] hover:text-tinta ${recolhida ? 'justify-center' : 'px-3.5'}`}>
+            className={`flex h-10 items-center gap-3 rounded-lg text-[13.5px] text-tinta-2 transition-colors hover:bg-realce hover:text-tinta ${recolhida ? 'justify-center' : 'px-3.5'}`}>
             <Lifebuoy size={19} weight="fill" />{!recolhida && 'Central de ajuda'}
           </a>
           <div className="mx-1 h-px bg-fio-forte" />
           <Menu.Root>
-            <Menu.Trigger data-tour="perfil" className={`flex items-center gap-2.5 rounded-lg py-1.5 text-left transition-colors hover:bg-white/[0.03] data-[state=open]:bg-white/[0.04] ${recolhida ? 'justify-center' : 'px-2'}`}>
+            <Menu.Trigger data-tour="perfil" className={`flex items-center gap-2.5 rounded-lg py-1.5 text-left transition-colors hover:bg-realce data-[state=open]:bg-realce ${recolhida ? 'justify-center' : 'px-2'}`}>
               {eu && <Avatar id={eu.id} nome={eu.nome} foto={eu.foto} />}
               {!recolhida && <>
                 <div className="min-w-0 flex-1 leading-tight">
@@ -134,8 +135,8 @@ export default function Shell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[64px] items-center gap-3 px-4 md:h-[76px] md:px-10">
-          {/* Bloco da organização, como o "Amazon · Administration" da referência */}
+        <header className="flex h-[64px] items-center gap-3 px-4 md:h-[72px] md:px-10">
+          {/* Bloco da organização */}
           <div className="flex items-center gap-3">
             <LogoSG size={18} tile />
             <div className="leading-tight">
@@ -145,11 +146,11 @@ export default function Shell() {
           </div>
           <div className="ml-auto flex items-center gap-1">
             {pode('alertas') && <NavLink to="/alertas" aria-label={`${ativos} alertas ativos`} data-tour="sino"
-              className="relative grid size-9 place-items-center rounded-lg text-tinta transition-colors hover:bg-white/5">
+              className="relative grid size-9 place-items-center rounded-lg text-tinta transition-colors hover:bg-realce">
               <Bell size={20} weight="fill" />
               {ativos > 0 && <span className="absolute right-2 top-1.5 size-2 rounded-full border-2 border-rack bg-desastre" />}
             </NavLink>}
-            <NavLink to="/chamados" aria-label="Chamados" className="relative grid size-9 place-items-center rounded-lg text-tinta transition-colors hover:bg-white/5">
+            <NavLink to="/chamados" aria-label="Chamados" className="relative grid size-9 place-items-center rounded-lg text-tinta transition-colors hover:bg-realce">
               <Ticket size={20} weight="fill" />
               {semDono > 0 && <span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-rack bg-media" />}
             </NavLink>
@@ -158,7 +159,7 @@ export default function Shell() {
         </header>
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-[calc(88px+env(safe-area-inset-bottom))] pt-2 md:px-10 md:pb-8">
           {janela && (
-            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] border border-media/35 bg-media/10 px-5 py-3 text-[13px]">
+            <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-media/30 bg-media/[0.08] px-5 py-3 text-[13px]">
               <Wrench size={17} weight="fill" className="text-media" />
               <b className="font-semibold">{situacao(janela).texto === 'Em andamento' ? 'Manutenção em andamento' : 'Manutenção programada'}:</b>
               <span>{janela.titulo}</span>
@@ -166,7 +167,10 @@ export default function Shell() {
               {janela.descricao && <span className="w-full text-[12px] text-tinta-2">{janela.descricao}</span>}
             </div>
           )}
-          <Outlet />
+          {/* As telas chegam sob demanda: enquanto o pedaço da página baixa, um esqueleto ocupa o lugar */}
+          <Suspense fallback={<Carregando altura="h-[60vh]" />}>
+            <div key={local.pathname} className="animate-[aparece_200ms_ease-out] motion-reduce:animate-none"><Outlet /></div>
+          </Suspense>
         </main>
       </div>
 
@@ -188,7 +192,7 @@ export default function Shell() {
       </nav>
       <Dialog.Root open={mais} onOpenChange={setMais}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/55 md:hidden" />
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px] md:hidden" />
           <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-fio-forte bg-painel px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-3 data-[state=open]:animate-[surge-chat_220ms_cubic-bezier(0.23,1,0.32,1)] md:hidden">
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-fio-forte" />
             <Dialog.Title className="sr-only">Mais opções</Dialog.Title>

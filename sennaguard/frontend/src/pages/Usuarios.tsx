@@ -20,10 +20,10 @@ type Form = Omit<Usuario, 'id' | 'criado_em' | 'ultimo_acesso' | 'telegram' | 'f
 const vazio: Form = { nome: '', email: '', papel: 'Operador', ativo: 1, alerta_email: 1, chamado_email: 0, senha: '' }
 
 export default function Usuarios() {
-  const { dados, recarregar } = useApi<Usuario[]>('/api/usuarios')
+  const { dados, erro: erroDados, recarregar } = useApi<Usuario[]>('/api/usuarios')
   const [editando, setEditando] = useState<(Form & { id?: number }) | null>(null)
   const [erro, setErro] = useState('')
-  if (!dados) return <Carregando />
+  if (!dados) return <Carregando erro={erroDados} onTentar={recarregar} />
 
   const salvar = async (ev: FormEvent) => {
     ev.preventDefault()
@@ -44,7 +44,7 @@ export default function Usuarios() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Usuários</h1>
+          <h1 className="titulo-pagina">Usuários</h1>
           <p className="mt-1 text-tinta-3">Quem acessa o NOC e quem recebe os avisos de alerta e de chamado no Telegram.</p>
         </div>
         <Botao variante="primario" onClick={() => abrir()}><Plus />Novo usuário</Botao>

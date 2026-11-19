@@ -87,7 +87,7 @@ export function curto(nome: string) {
   return nome.split(':')[0]
 }
 
-const itemMenu = 'flex h-8 cursor-default items-center rounded-md px-2.5 text-tinta-2 outline-none data-[highlighted]:bg-white/5 data-[highlighted]:text-tinta'
+const itemMenu = 'flex h-8 cursor-default items-center rounded-md px-2.5 text-tinta-2 outline-none data-[highlighted]:bg-realce data-[highlighted]:text-tinta'
 
 export default function Visao() {
   const [horas, setHoras] = useState(24)
@@ -113,7 +113,7 @@ export default function Visao() {
   const cada = (padrao: number) => (auto ? padrao : ritmo)
   const canais = (c: string[]) => (auto ? c : [])
   const ao_vivo = recorte ? 0 : cada(curto ? 1000 : 10000)
-  const { dados: v } = useApi<TVisao>('/api/visao', cada(curto ? 2000 : 10000), canais(['visao']))
+  const { dados: v, erro: erroV, recarregar: recarregarV } = useApi<TVisao>('/api/visao', cada(curto ? 2000 : 10000), canais(['visao']))
   const { dados: lat } = useApi<Ponto[]>(`/api/serie/latencia?${periodo}`, ao_vivo, recorte ? [] : canais(['visao']))
   const { dados: trf } = useApi<Ponto[]>(`/api/serie/trafego?${periodo}`, ao_vivo)
   const { dados: wan } = useApi<Ponto[]>(interno ? `/api/serie/wan?${periodo}` : '', ao_vivo)
@@ -136,7 +136,7 @@ export default function Visao() {
   const media = trafego?.length ? trafego.reduce((s, p) => s + (p.mbps ?? 0), 0) / trafego.length : 0
 
   const conteudo: Record<string, ReactNode> = {
-    contexto: v ? <Contexto v={v} interno={interno} /> : <Carregando />,
+    contexto: v ? <Contexto v={v} interno={interno} /> : <Carregando erro={erroV} onTentar={recarregarV} altura="h-[52px]" />,
     latencia: (
       <Card className="h-full md:!px-9 md:!pt-7 !pb-5"
         titulo={enlace === 'fibra' ? 'Latência da fibra' : 'Latência do rádio'}
@@ -181,8 +181,8 @@ export default function Visao() {
   return (
     <div className="flex flex-col gap-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="flex items-center gap-2.5 text-[22px] font-medium tracking-[-0.02em] text-titulo">
-          Enlaces<CaretRight size={18} weight="bold" className="text-titulo" />Matriz ⇄ Filial
+        <h1 className="flex items-center gap-2.5 titulo-pagina">
+          Enlaces<CaretRight size={16} weight="bold" className="text-tinta-4" />Matriz ⇄ Filial
         </h1>
         {rascunho ? (
           <div className="flex flex-wrap gap-2.5">
@@ -285,7 +285,7 @@ export default function Visao() {
 function BotaoIcone({ rotulo, onClick, desligado = false, children }: { rotulo: string; onClick: () => void; desligado?: boolean; children: ReactNode }) {
   return (
     <button type="button" aria-label={rotulo} title={rotulo} onClick={onClick} disabled={desligado}
-      className="grid size-7 place-items-center rounded text-tinta-2 hover:bg-white/5 hover:text-tinta disabled:opacity-30 [&_svg]:size-4">{children}</button>
+      className="grid size-7 place-items-center rounded text-tinta-2 hover:bg-realce hover:text-tinta disabled:opacity-30 [&_svg]:size-4">{children}</button>
   )
 }
 

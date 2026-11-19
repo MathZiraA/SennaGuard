@@ -10,11 +10,11 @@ import Modal from '../components/Modal'
 import { Botao, Card, Carregando, Led, Sev, Vazio } from '../components/ui'
 
 export default function Chamados() {
-  const { dados, recarregar } = useApi<ListaChamados>('/api/chamados', 60000, ['chamados'])
+  const { dados, erro: erroDados, recarregar } = useApi<ListaChamados>('/api/chamados', 60000, ['chamados'])
   const { pode, eu } = useSessao()
   const [params, setParams] = useSearchParams()
   const [aberto, setAberto] = useState<string | null>(null)
-  if (!dados) return <Carregando />
+  if (!dados) return <Carregando erro={erroDados} onTentar={recarregar} />
   const { chamados, manuais } = dados
   const ig = dados.integridade.ok ? dados.integridade_manuais : dados.integridade
   const registros = dados.integridade.registros + dados.integridade_manuais.registros
@@ -26,7 +26,7 @@ export default function Chamados() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Chamados</h1>
+          <h1 className="titulo-pagina">Chamados</h1>
           <p className="mt-1 text-tinta-3">{cliente
             ? 'Abra um chamado quando algo não estiver funcionando na Filial e acompanhe o atendimento aqui.'
             : 'Chamados abertos pelas pessoas (SG-xxx) e os automáticos de quedas acima de 1 h (NOC-xxx).'}</p>
@@ -74,7 +74,7 @@ export default function Chamados() {
               return (
                 <li key={c.numero} className="border-b border-fio last:border-0">
                   <button onClick={() => setAberto(exp ? null : c.numero)} aria-expanded={exp}
-                    className="grid w-full grid-cols-[minmax(0,1fr)_20px] items-center gap-x-4 gap-y-2 px-4 py-3.5 text-left transition-colors hover:bg-white/[0.02] md:min-w-[720px] md:grid-cols-[120px_minmax(0,1fr)_auto_150px_20px] md:px-5">
+                    className="grid w-full grid-cols-[minmax(0,1fr)_20px] items-center gap-x-4 gap-y-2 px-4 py-3.5 text-left transition-colors hover:bg-realce/60 md:min-w-[720px] md:grid-cols-[120px_minmax(0,1fr)_auto_150px_20px] md:px-5">
                     <span className="font-mono text-[12px] font-medium text-fibra max-md:col-span-2">{c.numero}</span>
                     <span className="flex min-w-0 items-center gap-3 max-md:col-start-1">
                       <TrilhoMini nome={c.nome} />
@@ -126,7 +126,7 @@ function LinhaManual({ c, onAbrir }: { c: ChamadoManual; onAbrir: () => void }) 
         <span className="text-[11px] text-tinta-3">{CATEGORIAS[c.categoria]} · {IMPACTOS[c.impacto].toLowerCase()} · {c.aberto_por_nome}</span>
         <SlaChip c={c} />
       </button>
-      <button onClick={onAbrir} className="hidden w-full min-w-[720px] grid-cols-[100px_minmax(0,1fr)_140px_190px] items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-white/[0.02] md:grid">
+      <button onClick={onAbrir} className="hidden w-full min-w-[720px] grid-cols-[100px_minmax(0,1fr)_140px_190px] items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-realce/60 md:grid">
         <span className="font-mono text-[12px] font-medium text-media">{c.numero}</span>
         <span className="min-w-0">
           <span className="block truncate font-medium">{c.titulo}</span>

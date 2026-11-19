@@ -8,12 +8,12 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --color-lateral: #090a0e;     /* barra lateral: preto frio */
-  --color-rack: #0a0c11;        /* fundo da área de trabalho: preto (FlowGest) */
+  --color-rack: #0c0e13;        /* fundo da área de trabalho: preto (FlowGest) */
   --color-painel: #12151d;      /* cards */
   --color-painel-alto: #1a1e28; /* pílulas, chips, menus, diálogos */
   --color-fenda: #0c0e14;       /* campos: afundados no painel */
 
-  --color-tinta: #f3f4f6;
+  --color-tinta: #e9eaee;
   --color-tinta-2: #c1c4cc;
   --color-tinta-3: #888c97;
   --color-tinta-4: #595d68;
@@ -23,12 +23,14 @@
   --color-led: #35c98a;         /* link up, situação normal */
 
   /* Severidades: vermelho-rosado para crítico caindo para lilás no aviso */
-  --color-desastre: #f0576f;
-  --color-alta: #ee7f90;
-  --color-media: #c783e6;
-  --color-aviso: #a98cf0;
+  --color-desastre: #e26a7d;
+  --color-alta: #e38b99;
+  --color-media: #c290dc;
+  --color-aviso: #a597e2;
 
   --color-fio: rgb(255 255 255 / 0.06);
+  --color-realce: rgb(255 255 255 / 0.045); /* hover discreto que funciona nos dois temas */
+  --color-sobre-fibra: #ffffff;              /* texto sobre o roxo da marca */
   --color-fio-forte: rgb(255 255 255 / 0.11);
   --color-limite: #b85a7a;      /* linhas de limite tracejadas dos gráficos */
   --color-normal: #454955;      /* linha de referência "Normal" */
@@ -69,6 +71,7 @@
   --color-aviso: #7a5fd0;
   --color-fio: rgb(30 15 45 / 0.09);
   --color-fio-forte: rgb(30 15 45 / 0.16);
+  --color-realce: rgb(30 15 45 / 0.045);
   --color-limite: #d9718a;
   --color-normal: #c9b3bd;
   --color-eixo: #e2dcee;
@@ -90,9 +93,13 @@ html { color-scheme: dark; }
 :root[data-tema="claro"] .sombra-clara { box-shadow: 0 1px 2px rgb(30 15 45 / .06), 0 4px 12px rgb(30 15 45 / .05); }
 body {
   @apply bg-rack text-tinta font-sans antialiased;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.5;
   font-feature-settings: "cv11", "ss01";
 }
+p { text-wrap: pretty; }
+/* Título de página: um só estilo para todas as telas. */
+.titulo-pagina { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; color: var(--color-titulo); }
 h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.012em; text-wrap: balance; }
 .num { font-variant-numeric: tabular-nums; }
 
@@ -113,8 +120,32 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.012em; text-wr
 @keyframes aparece { from { opacity: 0; } }
 @keyframes gaveta { from { opacity: 0; transform: translateX(24px); } }
 @keyframes surge { from { opacity: 0; transform: translate(-50%, -48%) scale(.97); } }
-@media (prefers-reduced-motion: reduce) {
-  [data-state=open] { animation-name: aparece !important; }
-}
+
 @keyframes gaveta-esq { from { opacity: 0; transform: translateX(-24px); } }
 @keyframes surge-chat { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+
+/* Movimento (tokens do transitions.dev): abrir 250 ms, fechar 150 ms, mesma curva suave. */
+:root { --duracao-rapida: 150ms; --duracao-media: 250ms; --duracao-lenta: 400ms; --curva-suave: cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes some { to { opacity: 0; } }
+@keyframes gaveta-sai { to { opacity: 0; transform: translateX(16px); } }
+@keyframes surge-sai { to { opacity: 0; transform: translate(-50%, -49%) scale(.96); } }
+
+/* Menus suspensos (Radix): crescem a partir do gatilho e fecham mais rápido do que abrem. */
+@keyframes menu-abre { from { opacity: 0; transform: scale(.97); } }
+@keyframes menu-fecha { to { opacity: 0; transform: scale(.99); } }
+[data-radix-menu-content] { transform-origin: var(--radix-dropdown-menu-content-transform-origin); }
+[data-radix-menu-content][data-state="open"] { animation: menu-abre var(--duracao-media) var(--curva-suave); }
+[data-radix-menu-content][data-state="closed"] { animation: menu-fecha var(--duracao-rapida) var(--curva-suave); }
+
+/* Esqueleto de carregamento: brilho que atravessa o bloco. */
+@keyframes brilho { to { background-position: -200% 0; } }
+.esqueleto {
+  background: linear-gradient(90deg, var(--color-painel) 0%, var(--color-painel-alto) 50%, var(--color-painel) 100%);
+  background-size: 200% 100%;
+  animation: brilho 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto { animation: none; }
+  [data-state=open], [data-state=closed] { animation-name: aparece !important; animation-duration: 1ms !important; }
+}

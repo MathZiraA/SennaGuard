@@ -13,7 +13,7 @@ export default function Conhecimento() {
   const { pode } = useSessao()
   const [q, setQ] = useState('')
   const [busca, setBusca] = useState('')
-  const { dados, recarregar } = useApi<Artigo[]>(`/api/conhecimento?q=${encodeURIComponent(busca)}`, 0, ['conhecimento'])
+  const { dados, erro: erroDados, recarregar } = useApi<Artigo[]>(`/api/conhecimento?q=${encodeURIComponent(busca)}`, 0, ['conhecimento'])
   const [editando, setEditando] = useState<Partial<Artigo> | null>(null)
   const [lendo, setLendo] = useState<Artigo | null>(null)
   const rascunhos = dados?.filter(a => a.status === 'rascunho') ?? []
@@ -23,7 +23,7 @@ export default function Conhecimento() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Base de conhecimento</h1>
+          <h1 className="titulo-pagina">Base de conhecimento</h1>
           <p className="mt-1 text-tinta-3">Soluções de problemas já resolvidos. Quando alguém abre um chamado parecido, elas aparecem como sugestão.</p>
         </div>
         {pode('editar_conhecimento') && <Botao variante="primario" onClick={() => setEditando({ status: 'rascunho', categoria: 'outro' })}><Plus weight="bold" />Novo artigo</Botao>}
@@ -52,7 +52,7 @@ export default function Conhecimento() {
         </Card>
       )}
 
-      {!dados ? <Carregando /> : !publicados.length ? <Vazio>Nada encontrado{busca ? ` para "${busca}"` : ''}.</Vazio> : (
+      {!dados ? <Carregando erro={erroDados} onTentar={recarregar} /> : !publicados.length ? <Vazio>Nada encontrado{busca ? ` para "${busca}"` : ''}.</Vazio> : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {publicados.map(a => (
             <button key={a.id} onClick={() => setLendo(a)} className="flex flex-col gap-2 rounded-xl border border-fio bg-painel p-5 text-left transition-colors hover:border-fio-forte">

@@ -4,6 +4,7 @@ import { desde } from '../lib/fmt'
 import Trilho from '../components/Trilho'
 import Grafico, { faixasSemResposta } from '../components/Grafico'
 import { curto } from './Visao'
+import { LogoSG } from '../components/Shell'
 
 type DadosTv = { visao: Visao; latencia: Ponto[]; alertas: { id: string; severidade: string; nivel: number; nome: string; inicio: number }[] }
 
@@ -24,14 +25,14 @@ export default function Tv() {
   }, [k])
 
   if (erro && !d) return <div className="grid min-h-screen place-items-center text-[20px] text-tinta-2">{erro}</div>
-  if (!d) return null
+  if (!d) return <div className="grid min-h-screen place-items-center" role="status" aria-label="Carregando"><div className="respira"><LogoSG size={30} tile /></div></div>
   const redundante = d.visao.enlaces.fibra.up && d.visao.enlaces.radio.up
   const net = d.visao.internet // links de internet do R-MATRIZ (VIVO principal, TIN backup)
 
   return (
     <div className="flex min-h-screen flex-col gap-5 p-8">
       <header className="flex items-center gap-6">
-        <span className="text-[22px] font-medium tracking-[0.28em]">SENNA<span className="text-fibra">G</span>UARD</span>
+        <span className="flex items-center gap-3 text-[22px] font-semibold tracking-[-0.01em]"><LogoSG size={24} tile />SennaGuard</span>
         <span className="text-[16px] text-tinta-2">NOC Matriz · Filial</span>
         <span className={`rounded-full px-4 py-1.5 text-[15px] font-semibold ${redundante ? 'bg-led/15 text-led' : 'bg-desastre/15 text-desastre'}`}>
           {redundante ? '● Rede com redundância' : '● Rede sem redundância'}

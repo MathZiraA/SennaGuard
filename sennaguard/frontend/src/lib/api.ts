@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type Enlace = { up: boolean; latencia: number | null; perda: number | null; porta: string; custo: number; ip: string; sinal?: number | null; desde?: number }
 export type Visao = {
@@ -66,19 +66,39 @@ export function iniciarTempoReal() {
 }
 export function pararTempoReal() { fonteEventos?.close(); fonteEventos = null }
 
+/** GETs iguais disparados ao mesmo tempo (a Shell e a página pedindo /api/alertas, por exemplo) viram uma requisição só. */
+const emVoo = new Map<string, Promise<unknown>>()
+function buscarJunto<T>(url: string): Promise<T> {
+  let p = emVoo.get(url) as Promise<T> | undefined
+  if (!p) {
+    p = api<T>(url).finally(() => emVoo.delete(url))
+    emVoo.set(url, p)
+  }
+  return p
+}
+
 /** Busca, repete a cada `intervalo` ms (0 = só uma vez) e recarrega na hora quando um dos `canais` muda. */
 export function useApi<T>(url: string, intervalo = 0, canais: string[] = []) {
   const [dados, setDados] = useState<T | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const carregar = useCallback(() => {
+  const urlAtual = useRef(url)
+  urlAtual.current = url
+  // `junto` só na carga inicial e no polling; depois de uma ação ou evento em tempo real busca sempre dado novo
+  const carregar = useCallback((junto?: unknown) => {
     if (!url) return // url vazia = o perfil não tem acesso, não busca
-    api<T>(url).then(d => { setDados(d); setErro(null) }).catch(e => setErro(e.message))
+    ;(junto === true ? buscarJunto<T>(url) : api<T>(url))
+      // Resposta de uma url antiga (o período mudou no meio do caminho) não sobrescreve a nova
+      .then(d => { if (urlAtual.current === url) { setDados(d); setErro(null) } })
+      .catch(e => { if (urlAtual.current === url) setErro(e.message) })
   }, [url])
   useEffect(() => {
-    carregar()
+    carregar(true)
     if (!intervalo) return
-    const id = setInterval(carregar, intervalo)
-    return () => clearInterval(id)
+    // Com a aba em segundo plano o polling descansa; ao voltar, atualiza na hora
+    const id = setInterval(() => { if (!document.hidden) carregar(true) }, intervalo)
+    const aoVoltar = () => { if (!document.hidden) carregar(true) }
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', aoVoltar) }
   }, [carregar, intervalo])
   const chaveCanais = canais.join(',')
   useEffect(() => {

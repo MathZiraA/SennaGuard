@@ -23,7 +23,7 @@ export default function Perfil() {
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Meu perfil</h1>
+        <h1 className="titulo-pagina">Meu perfil</h1>
         <p className="mt-1 text-tinta-3">Sua foto, seu e-mail de acesso, sua senha e o que chega no seu Telegram.</p>
       </div>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

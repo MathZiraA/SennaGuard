@@ -10,7 +10,7 @@ import { Botao, Card, Carregando, Led, Segmentado, Sev, Vazio } from '../compone
 const SEVS = ['Desastre', 'Alta', 'Média', 'Aviso']
 
 export default function Alertas() {
-  const { dados, recarregar } = useApi<Alerta[]>('/api/alertas', 10000, ['alertas'])
+  const { dados, erro: erroDados, recarregar } = useApi<Alerta[]>('/api/alertas', 10000, ['alertas'])
   const [params, setParams] = useSearchParams()
   const [filtro, setFiltro] = useState<'ativos' | 'todos'>('todos')
   const [sevs, setSevs] = useState<string[]>([])
@@ -31,7 +31,7 @@ export default function Alertas() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-medium tracking-[-0.02em] text-titulo">Alertas</h1>
+          <h1 className="titulo-pagina">Alertas</h1>
           <p className="mt-1 text-tinta-3">
             Problemas de todos os equipamentos nos últimos 7 dias (e os que continuam abertos), agrupados em incidentes.
             {ia?.percentual != null && <> Analista IA: <b className="font-semibold text-tinta">{ia.percentual}% útil</b> em {ia.avaliacoes} avaliações.</>}
@@ -51,7 +51,7 @@ export default function Alertas() {
         </div>
       </div>
 
-      {!dados ? <Carregando /> : (
+      {!dados ? <Carregando erro={erroDados} onTentar={recarregar} /> : (
         <Card className="!p-0">
           {lista.length === 0 ? <div className="p-5"><Vazio>Nenhum alerta com esse filtro.</Vazio></div> : (
             <>
@@ -92,7 +92,7 @@ export default function Alertas() {
                   const aberto = expandidos.includes(g[0].incidente)
                   return (aberto ? g : g.slice(0, 1)).map((a, i) => (
                   <tr key={a.id} onClick={() => setParams({ id: a.id })} tabIndex={0} onKeyDown={e => e.key === 'Enter' && setParams({ id: a.id })}
-                    className={`cursor-pointer border-b border-fio transition-colors last:border-0 hover:bg-white/[0.02] focus-visible:bg-white/[0.03] ${i > 0 ? 'bg-fenda/60' : ''}`}>
+                    className={`cursor-pointer border-b border-fio transition-colors last:border-0 hover:bg-realce/60 focus-visible:bg-realce ${i > 0 ? 'bg-fenda/60' : ''}`}>
                     <td className="py-3 pl-5">
                       <div className={`flex items-center gap-3 ${i > 0 ? 'pl-8' : ''}`}>
                         {i > 0 && <span className="-ml-4 h-6 w-3 rounded-bl-md border-b border-l border-fio-forte" />}
