@@ -1,9 +1,10 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import { Carregando } from './ui'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import * as Menu from '@radix-ui/react-dropdown-menu'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Bell, BookOpenText, ClockCounterClockwise, Compass, DotsThreeOutline, Flask, Wrench, CaretDoubleLeft, CaretDoubleRight, ChartLineUp, DotsThree, Lifebuoy, HardDrives, Moon, SignOut, Siren, Sun, TelegramLogo, Ticket, UserCircle, UsersThree } from '@phosphor-icons/react'
+import { Bell, BookOpenText, ClockCounterClockwise, Compass, DotsThreeOutline, Flask, Wrench, CaretDoubleLeft, CaretDoubleRight, ChartLineUp, DotsThree, Lifebuoy, HardDrives, Keyboard, MagnifyingGlass, Moon, SignOut, Siren, Sun, TelegramLogo, Ticket, UserCircle, UsersThree } from '@phosphor-icons/react'
 import { iniciarTempoReal, pararTempoReal, useApi, type Alerta, type ListaChamados } from '../lib/api'
 import { alternarTema, temaAtual } from '../lib/tema'
 import { situacao, type Manutencao } from '../pages/Manutencao'
@@ -14,6 +15,9 @@ import Avatar from './Avatar'
 import Modal from './Modal'
 import Chat from './Chat'
 import Tour from './Tour'
+import { Paleta, type ItemComando } from './Paleta'
+import { Toaster } from '../lib/toast'
+import { notificar } from '../lib/avisoNavegador'
 
 const NAV = [
   { para: '/', rotulo: 'Visão do enlace', curto: 'Visão', icone: ChartLineUp, permissao: 'visao' },
@@ -55,9 +59,25 @@ export default function Shell() {
   const [ligandoTelegram, setLigandoTelegram] = useState(false)
   const [tour, setTour] = useState(false)
   const [tema, setTema] = useState(temaAtual)
+  const [cmdK, setCmdK] = useState(false)
+  const [ajuda, setAjuda] = useState(false)
   const local = useLocation()
   const ir = useNavigate()
   useEffect(() => { iniciarTempoReal(); return pararTempoReal }, [])
+  // Aviso do navegador quando surge um alerta crítico novo (mesmo com a aba em segundo plano).
+  const vistosRef = useRef<Set<string>>(new Set())
+  const primeiraRef = useRef(true)
+  useEffect(() => {
+    if (!alertas) return
+    const criticos = alertas.filter(a => a.ativo && (a.severidade === 'Desastre' || a.severidade === 'Alta'))
+    if (primeiraRef.current) { criticos.forEach(a => vistosRef.current.add(a.id)); primeiraRef.current = false; return }
+    criticos.forEach(a => {
+      if (!vistosRef.current.has(a.id)) {
+        vistosRef.current.add(a.id)
+        if (document.hidden) notificar('Alerta no NOC SENAI', `${a.severidade}: ${a.nome}`)
+      }
+    })
+  }, [alertas])
   useEffect(() => { setMais(false) }, [local.pathname])
   useEffect(() => { if (eu && !eu.tour_visto) setTour(true) }, [eu?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -65,20 +85,62 @@ export default function Shell() {
   const atalhos = (eu?.papel === 'Cliente' ? ATALHOS_CLIENTE : ATALHOS_EQUIPE).map(p => permitidos.find(n => n.para === p)).filter(n => !!n)
   const resto = permitidos.filter(n => !atalhos.includes(n))
 
+  // Paleta de comandos (⌘/Ctrl+K): telas permitidas + ações rápidas
+  const ATALHO_NAV: Record<string, string> = { '/': 'G V', '/alertas': 'G A', '/chamados': 'G C', '/equipamentos': 'G E' }
+  const itensComando: ItemComando[] = [
+    ...permitidos.map(n => { const Ic = n.icone; return { id: n.para, rotulo: n.rotulo, sub: 'Ir para a tela', icone: <Ic weight="fill" />, atalho: ATALHO_NAV[n.para], acao: () => ir(n.para) } }),
+    { id: 'perfil', rotulo: 'Meu perfil', sub: 'Conta, aparência e avisos', icone: <UserCircle weight="fill" />, acao: () => ir('/perfil') },
+    ...(pode('abrir_chamado') ? [{ id: 'novo', rotulo: 'Abrir chamado', icone: <Ticket weight="fill" />, acao: () => ir('/chamados?sg=novo') }] : []),
+    { id: 'tema', rotulo: tema === 'claro' ? 'Mudar para tema escuro' : 'Mudar para tema claro', icone: tema === 'claro' ? <Moon /> : <Sun />, acao: () => setTema(alternarTema()) },
+    { id: 'tour', rotulo: 'Fazer o tour', icone: <Compass weight="fill" />, acao: () => setTour(true) },
+    { id: 'atalhos', rotulo: 'Ver atalhos de teclado', icone: <Keyboard weight="fill" />, atalho: '?', acao: () => setAjuda(true) },
+  ]
+  // Atalhos globais: ⌘/Ctrl+K abre a paleta, "?" a ajuda, "g" + letra pula de tela
+  useEffect(() => {
+    let g = 0
+    const onKey = (e: KeyboardEvent) => {
+      const alvo = e.target as HTMLElement | null
+      const digitando = !!alvo && (/^(input|textarea|select)$/i.test(alvo.tagName) || alvo.isContentEditable)
+      if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdK(o => !o); return }
+      if (digitando) return
+      if (e.key === '?') { e.preventDefault(); setAjuda(true); return }
+      if (e.key === 'g' || e.key === 'G') { g = Date.now(); return }
+      if (g && Date.now() - g < 900) {
+        const rota: Record<string, string> = { v: '/', a: '/alertas', c: '/chamados', e: '/equipamentos', m: '/manutencao', b: '/backups', u: '/usuarios', k: '/conhecimento' }
+        const r = rota[e.key.toLowerCase()]
+        g = 0
+        if (r && permitidos.some(n => n.para === r)) { e.preventDefault(); ir(r) }
+      } else g = 0
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [permitidos, ir])
+
+  const mola = { type: 'spring' as const, stiffness: 420, damping: 36 }
   const navegacao = (compacta: boolean) => (
     <nav className="flex flex-col gap-1" data-tour="nav">
       {permitidos.map(({ para, rotulo, icone: Icone }) => (
         <NavLink key={para} to={para} end title={compacta ? rotulo : undefined}
-          className={({ isActive }) => `relative flex h-10 items-center gap-3 rounded-lg text-[13.5px] transition-colors duration-150 focus-visible:outline-offset-0 ${compacta ? 'justify-center' : 'px-3.5'} ${isActive ? `bg-ativo font-medium text-tinta [&_svg]:text-fibra ${compacta ? '' : 'before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-fibra'}` : 'text-tinta-2 hover:bg-realce hover:text-tinta'}`}>
-          <span className="relative">
-            <Icone size={19} weight="fill" />
-            {compacta && ponto[para] && <span className="ponto-pop absolute -right-1 -top-0.5 size-1.5 rounded-full" style={{ background: ponto[para]! }} />}
-          </span>
-          {!compacta && <>{rotulo}{ponto[para] && <span className="ponto-pop size-1.5 rounded-full" style={{ background: ponto[para]! }} />}</>}
+          className={({ isActive }) => `relative flex h-10 items-center gap-3 rounded-lg text-[13.5px] transition-[color,transform] duration-150 focus-visible:outline-offset-0 ${compacta ? 'justify-center' : 'px-3.5'} ${isActive ? 'font-medium text-tinta [&_svg]:text-fibra' : 'text-tinta-2 hover:translate-x-[2px] hover:bg-realce hover:text-tinta'}`}>
+          {({ isActive }) => <>
+            {/* Indicador que DESLIZA entre as abas (mesmo layoutId = animação compartilhada) */}
+            {isActive && <motion.span layoutId="nav-ativo" transition={mola} className="absolute inset-0 -z-10 rounded-lg bg-ativo motion-reduce:transition-none" />}
+            {isActive && !compacta && <motion.span layoutId="nav-barra" transition={mola} className="absolute inset-y-2.5 left-0 w-[3px] rounded-r-full bg-fibra motion-reduce:transition-none" />}
+            <span className="relative">
+              <Icone size={19} weight="fill" className={`icone-nav ${isActive ? 'icone-nav-ativo' : ''}`} />
+              {compacta && ponto[para] && <span className="ponto-pop absolute -right-1 -top-0.5 size-1.5 rounded-full" style={{ background: ponto[para]! }} />}
+            </span>
+            {!compacta && <>{rotulo}{ponto[para] && <span className="ponto-pop size-1.5 rounded-full" style={{ background: ponto[para]! }} />}</>}
+          </>}
         </NavLink>
       ))}
     </nav>
   )
+  const estado = ativos > 0
+    ? { cor: 'var(--color-desastre)', texto: `${ativos} alerta${ativos > 1 ? 's' : ''} ativo${ativos > 1 ? 's' : ''}`, sub: 'requer atenção', pulsa: true }
+    : janela
+      ? { cor: 'var(--color-media)', texto: 'Manutenção', sub: 'janela programada', pulsa: false }
+      : { cor: 'var(--color-led)', texto: 'Tudo operacional', sub: 'enlaces no ar', pulsa: false }
 
   return (
     <div className="flex min-h-screen">
@@ -99,6 +161,17 @@ export default function Shell() {
         {navegacao(recolhida)}
 
         <div className="mt-auto flex flex-col gap-3">
+          {/* Status do NOC: preenche a barra e mostra a saúde geral (estilo "all systems secure"). */}
+          <div className={`flex items-center gap-2.5 rounded-xl border border-fio bg-painel/60 ${recolhida ? 'justify-center p-2.5' : 'px-3 py-2.5'}`} title={`${estado.texto} · ${estado.sub}`}>
+            <span className="relative grid place-items-center">
+              <span className="size-2 rounded-full" style={{ background: estado.cor, boxShadow: `0 0 0 3px color-mix(in srgb, ${estado.cor} 20%, transparent)` }} />
+              {estado.pulsa && <span className="respira absolute size-2 rounded-full" style={{ background: estado.cor }} />}
+            </span>
+            {!recolhida && <div className="min-w-0 leading-tight">
+              <div className="truncate text-[12px] font-medium text-tinta">{estado.texto}</div>
+              <div className="truncate text-[10.5px] text-tinta-3">{estado.sub}</div>
+            </div>}
+          </div>
           <a href={AJUDA} target="_blank" rel="noreferrer" title="Central de ajuda"
             className={`flex h-10 items-center gap-3 rounded-lg text-[13.5px] text-tinta-2 transition-colors hover:bg-realce hover:text-tinta ${recolhida ? 'justify-center' : 'px-3.5'}`}>
             <Lifebuoy size={19} weight="fill" />{!recolhida && 'Central de ajuda'}
@@ -145,6 +218,10 @@ export default function Shell() {
             </div>
           </div>
           <div className="ml-auto flex items-center gap-1">
+            <button onClick={() => setCmdK(true)} title="Buscar · Ctrl/⌘ K"
+              className="mr-1 hidden h-9 items-center gap-2 rounded-lg border border-fio pl-2.5 pr-2 text-[12px] text-tinta-3 transition-colors hover:border-fio-forte hover:text-tinta md:flex">
+              <MagnifyingGlass size={15} /><span>Buscar</span><kbd className="num rounded border border-fio px-1 py-0.5 text-[10px] leading-none">Ctrl K</kbd>
+            </button>
             {pode('alertas') && <NavLink to="/alertas" aria-label={`${ativos} alertas ativos`} data-tour="sino"
               className="relative grid size-9 place-items-center rounded-lg text-tinta transition-colors hover:bg-realce">
               <Bell size={20} weight="fill" />
@@ -169,7 +246,7 @@ export default function Shell() {
           )}
           {/* As telas chegam sob demanda: enquanto o pedaço da página baixa, um esqueleto ocupa o lugar */}
           <Suspense fallback={<Carregando altura="h-[60vh]" />}>
-            <div key={local.pathname} className="animate-[aparece_200ms_ease-out] motion-reduce:animate-none"><Outlet /></div>
+            <div key={local.pathname} className="troca-tela"><Outlet /></div>
           </Suspense>
         </main>
       </div>
@@ -230,6 +307,26 @@ export default function Shell() {
         descricao="Chamados novos, respostas e alertas chegam direto no seu Telegram. Escolha quais em Meu perfil.">
         <ConectarTelegram conectado={!!eu?.telegram} disponivel={!!eu?.telegram_disponivel} />
       </Modal>
+
+      <Paleta aberto={cmdK} onClose={() => setCmdK(false)} itens={itensComando} />
+      <Modal aberto={ajuda} onClose={() => setAjuda(false)} titulo="Atalhos de teclado" descricao="Para navegar o SennaGuard sem o mouse.">
+        <ul className="flex flex-col gap-2 text-[13px]">
+          {([
+            ['Ctrl / ⌘ + K', 'Abrir a busca de telas e ações'],
+            ['G  depois  V', 'Ir para a Visão do enlace'],
+            ['G  depois  A', 'Ir para Alertas'],
+            ['G  depois  C', 'Ir para Chamados'],
+            ['G  depois  E', 'Ir para Equipamentos'],
+            ['?', 'Abrir esta lista de atalhos'],
+          ] as const).map(([k, d]) => (
+            <li key={k} className="flex items-center justify-between gap-4 border-b border-fio pb-2 last:border-0">
+              <span className="text-tinta-2">{d}</span>
+              <kbd className="num shrink-0 rounded-md border border-fio-forte bg-painel-alto px-2 py-1 text-[11px] text-tinta">{k}</kbd>
+            </li>
+          ))}
+        </ul>
+      </Modal>
+      <Toaster />
     </div>
   )
 }

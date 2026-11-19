@@ -4,7 +4,13 @@ import { api, enviarArquivo, type Notificacoes } from '../lib/api'
 import { useSessao } from '../lib/sessao'
 import Avatar from '../components/Avatar'
 import Modal from '../components/Modal'
-import { Botao, Card, Chave } from '../components/ui'
+import { Botao, Card, Chave, Segmentado } from '../components/ui'
+import { ACENTOS, acentoAtual, acentoHex, definirAcento, definirHex, type Acento } from '../lib/cores'
+import { definirTema, temaAtual, type Tema } from '../lib/tema'
+import { definirDensidade, densidadeAtual, type Densidade } from '../lib/densidade'
+import { salvar as salvarAparencia } from '../lib/aparencia'
+import { avisosLigados, desligarAvisos, ligarAvisos } from '../lib/avisoNavegador'
+import { toast } from '../lib/toast'
 
 const campo = 'h-9 w-full rounded-lg border border-fio bg-fenda px-3 text-tinta placeholder:text-tinta-4 focus:border-fibra/60 focus:outline-none'
 
@@ -29,11 +35,79 @@ export default function Perfil() {
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-3">
           <Conta />
+          <Aparencia />
           <Card titulo="Senha"><TrocarSenha /></Card>
         </div>
         <Avisos />
       </div>
     </div>
+  )
+}
+
+/** Aparência: cor de acento e tema. Vale só neste navegador (guardado no localStorage). */
+function Aparencia() {
+  const [acento, setAcento] = useState<Acento>(acentoAtual)
+  const [hex, setHex] = useState(acentoHex)
+  const [tema, setTema] = useState<Tema>(temaAtual)
+  const [densidade, setDensidade] = useState<Densidade>(densidadeAtual)
+  const [avisoNav, setAvisoNav] = useState(avisosLigados)
+  // Salva sempre a aparência inteira (o servidor substitui a coluna), com o campo novo por cima dos atuais.
+  const sync = (patch: Partial<{ tema: Tema; acento: Acento; acentoHex: string; densidade: Densidade }>) =>
+    salvarAparencia({ tema, acento, acentoHex: hex, densidade, ...patch })
+  const trocarAcento = (a: Acento) => { setAcento(a); definirAcento(a); sync({ acento: a }) }
+  const trocarTema = (t: Tema) => { setTema(t); definirTema(t); sync({ tema: t }) }
+  const trocarDensidade = (d: Densidade) => { setDensidade(d); definirDensidade(d); sync({ densidade: d }) }
+  const trocarHex = (h: string) => { setHex(h); setAcento('custom'); definirHex(h); sync({ acento: 'custom', acentoHex: h }) }
+  const trocarAviso = async (v: boolean) => {
+    if (v) { const ok = await ligarAvisos(); setAvisoNav(ok); if (!ok) toast('Permita as notificações do navegador para este site.', 'erro') }
+    else { desligarAvisos(); setAvisoNav(false) }
+  }
+  const custom = acento === 'custom'
+  return (
+    <Card titulo="Aparência">
+      <p className="-mt-2 mb-4 text-[12px] text-tinta-3">A cor e o tema valem só neste navegador.</p>
+      <div className="flex flex-col gap-2">
+        <span className="text-[12px] font-medium text-tinta-2">Cor de acento</span>
+        <div className="flex flex-wrap gap-2.5">
+          {ACENTOS.map(a => {
+            const ativo = acento === a.v
+            return (
+              <button key={a.v} type="button" onClick={() => trocarAcento(a.v)} title={a.rotulo} aria-pressed={ativo}
+                className={`group flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-[12px] font-medium transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] ${ativo ? 'border-fibra/60 bg-fibra/10 text-tinta' : 'border-fio bg-painel-alto text-tinta-2 hover:border-fio-forte hover:text-tinta'}`}>
+                <span className="grid size-5 place-items-center rounded-full ring-1 ring-inset ring-white/15" style={{ background: a.amostra }}>
+                  {ativo && <Check size={12} weight="bold" className={a.v === 'grafite' ? 'text-black' : 'text-white'} />}
+                </span>
+                {a.rotulo}
+              </button>
+            )
+          })}
+          {/* Cor livre: a pessoa escolhe qualquer tom pelo seletor nativo. */}
+          <label title="Escolher qualquer cor" aria-pressed={custom}
+            className={`group flex cursor-pointer items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-[12px] font-medium transition-[background-color,border-color,transform] duration-150 active:scale-[0.97] ${custom ? 'border-fibra/60 bg-fibra/10 text-tinta' : 'border-fio bg-painel-alto text-tinta-2 hover:border-fio-forte hover:text-tinta'}`}>
+            <span className="grid size-5 place-items-center rounded-full ring-1 ring-inset ring-white/15"
+              style={{ background: custom ? hex : 'conic-gradient(from 0deg, #f87171, #fbbf24, #34d399, #38bdf8, #a78bfa, #f472b6, #f87171)' }}>
+              {custom && <Check size={12} weight="bold" className="text-white" />}
+            </span>
+            {custom ? 'Personalizada' : 'Outra cor'}
+            <input type="color" value={hex} onChange={e => trocarHex(e.target.value)} className="sr-only" />
+          </label>
+        </div>
+        {custom && <span className="num text-[11px] text-tinta-3">Cor atual: {hex.toUpperCase()}</span>}
+      </div>
+      <div className="mt-5 flex items-center justify-between gap-4 border-t border-fio pt-4">
+        <span className="text-[12px] font-medium text-tinta-2">Tema</span>
+        <Segmentado rotulo="Tema" valor={tema} onChange={trocarTema}
+          opcoes={[{ v: 'escuro', rotulo: 'Escuro' }, { v: 'claro', rotulo: 'Claro' }]} />
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-4 border-t border-fio pt-4">
+        <span className="min-w-0 text-[12px] font-medium text-tinta-2">Densidade<span className="mt-0.5 block text-[11px] font-normal text-tinta-3">Compacto mostra mais dados por tela.</span></span>
+        <Segmentado rotulo="Densidade" valor={densidade} onChange={trocarDensidade}
+          opcoes={[{ v: 'confortavel', rotulo: 'Confortável' }, { v: 'compacto', rotulo: 'Compacto' }]} />
+      </div>
+      <div className="mt-4 border-t border-fio pt-4">
+        <Chave rotulo="Avisos do navegador" dica="Um alerta crítico aparece mesmo com a aba em segundo plano (vale só neste navegador)." ligado={avisoNav} onChange={trocarAviso} />
+      </div>
+    </Card>
   )
 }
 
@@ -52,12 +126,12 @@ function Conta() {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(arquivo.type)) return setErro('Use uma imagem JPG, PNG ou WEBP.')
     if (arquivo.size > 2 * 1024 * 1024) return setErro('A foto pode ter no máximo 2 MB.')
     setEnviando(true)
-    try { await enviarArquivo('/api/eu/foto', await recortar(arquivo), 'PUT'); await recarregar() }
+    try { await enviarArquivo('/api/eu/foto', await recortar(arquivo), 'PUT'); await recarregar(); toast('Foto atualizada') }
     catch (e) { setErro((e as Error).message) } finally { setEnviando(false); if (entrada.current) entrada.current.value = '' }
   }
   const salvarEmail = async (e: FormEvent) => {
     e.preventDefault(); setMsgEmail('')
-    try { await api('/api/eu/email', { method: 'PUT', body: JSON.stringify({ email, senha }) }); setSenha(''); await recarregar(); setMsgEmail('ok') }
+    try { await api('/api/eu/email', { method: 'PUT', body: JSON.stringify({ email, senha }) }); setSenha(''); await recarregar(); setMsgEmail('ok'); toast('E-mail atualizado') }
     catch (x) { setMsgEmail((x as Error).message) }
   }
 
@@ -99,7 +173,7 @@ export function TrocarSenha({ onFim }: { onFim?: () => void }) {
   const [msg, setMsg] = useState('')
   const enviar = async (e: FormEvent) => {
     e.preventDefault()
-    try { await api('/api/eu/senha', { method: 'PUT', body: JSON.stringify({ atual, nova }) }); setAtual(''); setNova(''); setMsg('ok'); onFim?.() }
+    try { await api('/api/eu/senha', { method: 'PUT', body: JSON.stringify({ atual, nova }) }); setAtual(''); setNova(''); setMsg('ok'); toast('Senha trocada'); onFim?.() }
     catch (x) { setMsg((x as Error).message) }
   }
   return (

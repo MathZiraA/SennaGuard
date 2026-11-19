@@ -1,14 +1,22 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import * as Menu from '@radix-ui/react-dropdown-menu'
-import { ArrowDown, Check, ArrowsClockwise, ArrowsOut, ArrowUp, CalendarBlank, CaretDown, CaretRight, CellSignalFull, CellSignalX, Cpu, DotsSixVertical, DownloadSimple, Eye, EyeSlash, FileText, LinkBreak, LinkSimple, MagnifyingGlassMinus, Plus, SlidersHorizontal, SquaresFour } from '@phosphor-icons/react'
+import { ArrowDown, Check, ArrowsClockwise, ArrowsOut, ArrowUp, CalendarBlank, CaretDown, CaretRight, CellSignalFull, CellSignalX, ClockCounterClockwise, Cpu, DotsSixVertical, DownloadSimple, Eye, EyeSlash, FileText, LinkBreak, LinkSimple, MagnifyingGlassMinus, Plus, Printer, SlidersHorizontal, SquaresFour } from '@phosphor-icons/react'
 import { api, useApi, type Alerta, type LinkWan, type ListaChamados, type Painel, type Ponto, type Visao as TVisao } from '../lib/api'
 import { dataHora, desde, duracao, hora } from '../lib/fmt'
 import { useSessao } from '../lib/sessao'
 import Grafico, { GraficosCruzados, faixasSemResposta, type Limite } from '../components/Grafico'
 import { StatusChamado } from '../components/Atendimento'
 import Modal from '../components/Modal'
-import { Botao, Card, Carregando, Chip, RotuloTroca, Segmentado, ValorTrocavel } from '../components/ui'
+import { Botao, Card, Carregando, Chip, EsqueletoGrafico, RotuloTroca, Segmentado, ValorTrocavel } from '../components/ui'
+import CountUp from '../components/CountUp'
+import Sparkline from '../components/Sparkline'
+import { toast } from '../lib/toast'
+
+/** Número inteiro que conta até o valor quando o cartão aparece (contadores do topo). */
+function Conta({ n }: { n: number }) {
+  return <CountUp to={n} duration={0.9} trigger="load" separator="." />
+}
 
 // Até 30 min: 1 ponto por segundo (sonda do servidor), para demonstrar queda e volta ao vivo
 const CURTO = 0.5
@@ -95,6 +103,7 @@ export default function Visao() {
   const [escolhendo, setEscolhendo] = useState(false)
   const [enlace, setEnlace] = useState<'fibra' | 'radio'>('fibra')
   const [comLimites, setComLimites] = useState(true)
+  const [comparar, setComparar] = useState(false)
   const { pode, eu, recarregar } = useSessao()
   const interno = pode('alertas') // equipe do NOC; o cliente vê os próprios chamados no lugar dos alertas
   // Links de internet (WAN) do R-MATRIZ: só a equipe do NOC vê
@@ -118,6 +127,13 @@ export default function Visao() {
   const ao_vivo = recorte ? 0 : cada(curto ? 1000 : 10000)
   const { dados: v, erro: erroV, recarregar: recarregarV } = useApi<TVisao>('/api/visao', cada(curto ? 2000 : 10000), canais(['visao']))
   const { dados: lat } = useApi<Ponto[]>(`/api/serie/latencia?${periodo}`, ao_vivo, recorte ? [] : canais(['visao']))
+  // Comparar com o período anterior (mesma duração, logo antes): série "fantasma" tracejada
+  const agoraSeg = Math.floor(Date.now() / 1000)
+  const spanSeg = Math.round(horas * 3600)
+  const { dados: latAnt } = useApi<Ponto[]>(comparar && !recorte ? `/api/serie/latencia?de=${agoraSeg - 2 * spanSeg}&ate=${agoraSeg - spanSeg}` : '', ao_vivo)
+  const latMix: Ponto[] | null = lat && comparar && !recorte && latAnt
+    ? lat.map((p, i) => ({ ...p, fibraAnt: latAnt[i]?.fibra ?? null, radioAnt: latAnt[i]?.radio ?? null }))
+    : lat
   const { dados: trf } = useApi<Ponto[]>(`/api/serie/trafego?${periodo}`, ao_vivo)
   const { dados: wan } = useApi<Ponto[]>(interno ? `/api/serie/wan?${periodo}` : '', ao_vivo)
   const { dados: alertas } = useApi<Alerta[]>(interno ? '/api/alertas' : '', cada(10000), canais(['alertas']))
@@ -143,17 +159,22 @@ export default function Visao() {
     latencia: (
       <Card className="h-full md:!px-9 md:!pt-7 !pb-5"
         titulo={<ValorTrocavel chave={enlace} texto={enlace === 'fibra' ? 'Latência da fibra' : 'Latência do rádio'} />}
-        extra={<Valor chave={enlace} numero={atual} valor={atual == null ? 'sem resposta' : `${atual.toLocaleString('pt-BR')} ms`} erro={atual == null} cor={cor} quando={recorte ? undefined : ultimo?.t} />}
+        extra={<span className="flex items-center gap-3">
+          <Valor chave={enlace} numero={atual} valor={atual == null ? 'sem resposta' : `${atual.toLocaleString('pt-BR')} ms`} erro={atual == null} cor={cor} quando={recorte ? undefined : ultimo?.t} />
+          {lat && lat.length > 2 && <span className="hidden sm:block"><Sparkline dados={lat.map(p => p[enlace])} cor={cor} /></span>}
+        </span>}
         acao={<div className="flex items-center gap-2">
           <Segmentado rotulo="Enlace" valor={enlace} onChange={setEnlace} opcoes={[{ v: 'fibra', rotulo: 'Fibra' }, { v: 'radio', rotulo: 'Rádio' }]} />
           <Chip ativo={comLimites} onClick={() => setComLimites(!comLimites)}><SlidersHorizontal />Limites</Chip>
+          {!recorte && <Chip ativo={comparar} onClick={() => setComparar(!comparar)} title="Sobrepor o período anterior"><ClockCounterClockwise />Comparar</Chip>}
         </div>}>
         {lat ? <GraficosCruzados ativa={enlace} graficos={(['fibra', 'radio'] as const).map(e => ({
           chave: e,
-          no: <Grafico dados={lat} serie={e} cor={e === 'fibra' ? 'var(--color-fibra)' : 'var(--color-radio)'} unidade="ms" altura={250} onZoom={zoom}
+          no: <Grafico dados={latMix ?? lat} serie={e} cor={e === 'fibra' ? 'var(--color-fibra)' : 'var(--color-radio)'} unidade="ms" altura={250} onZoom={zoom}
+            fantasma={comparar && !recorte ? `${e}Ant` : undefined}
             limites={comLimites ? LIMITES[e] : []} faixas={faixasSemResposta(lat, e, e === 'fibra' ? 'Fibra fora' : 'Rádio fora')} />,
         }))} />
-          : <div className="h-[250px]" />}
+          : <EsqueletoGrafico altura={250} />}
       </Card>
     ),
     alertas: <CardAlertas alertas={alertas} baixar={baixar} />,
@@ -161,10 +182,13 @@ export default function Visao() {
     internet: <CardInternet i={v?.internet} wan={wan} onZoom={zoom} />,
     trafego: (
       <Card className="h-full md:!px-9 md:!pt-7 !pb-5" titulo="Tráfego na Filial"
-        extra={<Valor numero={mbps} valor={mbps == null ? '—' : `${mbps.toLocaleString('pt-BR', { maximumFractionDigits: mbps < 10 ? 2 : 0 })} Mbps`} cor="var(--color-fibra)" quando={recorte ? undefined : trf?.[trf.length - 1]?.t} />}>
+        extra={<span className="flex items-center gap-3">
+          <Valor numero={mbps} valor={mbps == null ? '—' : `${mbps.toLocaleString('pt-BR', { maximumFractionDigits: mbps < 10 ? 2 : 0 })} Mbps`} cor="var(--color-fibra)" quando={recorte ? undefined : trf?.[trf.length - 1]?.t} />
+          {trafego && trafego.length > 2 && <span className="hidden sm:block"><Sparkline dados={trafego.map(p => p.mbps)} cor="var(--color-fibra)" /></span>}
+        </span>}>
         {trafego ? <Grafico dados={trafego} serie="mbps" cor="var(--color-fibra)" unidade="Mbps" altura={150} onZoom={zoom}
           limites={comLimites && media ? [{ valor: Math.round(media * 100) / 100, rotulo: 'Média', tipo: 'normal' }] : []} />
-          : <div className="h-[150px]" />}
+          : <EsqueletoGrafico altura={150} />}
       </Card>
     ),
     caminho: lat && v ? <CardCaminho pontos={lat} v={v} alertas={alertas ?? []} /> : <Card className="h-full"><div className="h-[150px]" /></Card>,
@@ -178,9 +202,9 @@ export default function Visao() {
   }
   const salvar = async () => {
     if (rascunho) await api('/api/eu/painel', { method: 'PUT', body: JSON.stringify(rascunho) })
-    await recarregar(); setRascunho(null)
+    await recarregar(); setRascunho(null); toast('Painel salvo')
   }
-  const restaurar = async () => { await api('/api/eu/painel', { method: 'DELETE' }); await recarregar(); setRascunho(null) }
+  const restaurar = async () => { await api('/api/eu/painel', { method: 'DELETE' }); await recarregar(); setRascunho(null); toast('Painel restaurado para o padrão') }
 
   return (
     <div className="flex flex-col gap-3">
@@ -244,6 +268,8 @@ export default function Visao() {
                     <div className="my-1 h-px bg-fio" />
                   </>}
                   <Menu.Item onSelect={exportar} className={itemMenu}>Latência do período (CSV)</Menu.Item>
+                  <div className="my-1 h-px bg-fio" />
+                  <Menu.Item onSelect={() => window.print()} className={`${itemMenu} gap-2`}><Printer size={14} />Imprimir / Salvar em PDF</Menu.Item>
                 </Menu.Content>
               </Menu.Portal>
             </Menu.Root>
@@ -264,11 +290,11 @@ export default function Visao() {
               onDrop={e => { e.preventDefault(); if (arrastando && arrastando !== id) mover(arrastando, rascunho!.ordem.indexOf(id)); setArrastando(null) }}>
               {conteudo[id]}
               {rascunho && (
-                <div className="absolute inset-0 z-10 flex items-start justify-between gap-2 rounded-xl bg-rack/40 p-2 outline-2 outline-dashed outline-fibra/50">
-                  <span className="flex cursor-grab items-center gap-1.5 rounded-md bg-painel-alto px-2 py-1 text-[12px] font-medium shadow active:cursor-grabbing">
+                <div className="edit-entra absolute inset-0 z-10 flex items-start justify-between gap-2 rounded-2xl bg-rack/40 p-2 outline-2 outline-dashed outline-fibra/50">
+                  <span className="alca-entra flex cursor-grab items-center gap-1.5 rounded-md bg-painel-alto px-2 py-1 text-[12px] font-medium shadow active:cursor-grabbing">
                     <DotsSixVertical size={16} weight="bold" />{CARTOES[id].nome}{oculto && <span className="text-tinta-3">· escondido</span>}
                   </span>
-                  <span className="flex gap-1 rounded-md bg-painel-alto p-0.5 shadow">
+                  <span className="alca-entra flex gap-1 rounded-md bg-painel-alto p-0.5 shadow">
                     <BotaoIcone rotulo="Mover para antes" onClick={() => mover(id, i - 1)} desligado={i === 0}><ArrowUp /></BotaoIcone>
                     <BotaoIcone rotulo="Mover para depois" onClick={() => mover(id, i + 1)} desligado={i === painel.ordem.length - 1}><ArrowDown /></BotaoIcone>
                     <BotaoIcone rotulo={oculto ? 'Mostrar' : 'Esconder'} onClick={() => setRascunho({ ...rascunho, ocultos: oculto ? rascunho.ocultos.filter(c => c !== id) : [...rascunho.ocultos, id] })}>
@@ -367,7 +393,7 @@ function CardAlertas({ alertas, baixar }: { alertas: Alerta[] | null; baixar: (n
   const destaque = lista.find(a => a.ativo && CRITICO.includes(a.severidade)) ?? lista.find(a => a.ativo)
   const criticos = alertas?.filter(a => CRITICO.includes(a.severidade)).length ?? 0
   return (
-    <Card className="h-full" titulo="Alertas" acao={
+    <Card className="sem-lift h-full" titulo="Alertas" acao={
       <Chip onClick={() => alertas && baixar('sennaguard-alertas.csv', ['evento;severidade;problema;inicio;fim',
         ...alertas.map(a => `${a.id};${a.severidade};${a.nome};${dataHora(a.inicio)};${a.fim ? dataHora(a.fim) : 'ativo'}`)])}>
         <DownloadSimple />Baixar
@@ -378,7 +404,7 @@ function CardAlertas({ alertas, baixar }: { alertas: Alerta[] | null; baixar: (n
           return (
             <li key={a.id}>
               <Link to={`/alertas?id=${a.id}`} title={a.nome}
-                className={`flex h-[30px] items-center gap-2.5 rounded-full px-3 text-[12px] transition-colors hover:bg-pilula-hover ${a === destaque ? 'bg-destaque ring-1 ring-inset' : 'bg-painel-alto'}`}
+                className={`pilula-x flex h-[30px] items-center gap-2.5 rounded-full px-3 text-[12px] hover:bg-pilula-hover ${a === destaque ? 'bg-destaque ring-1 ring-inset' : 'bg-painel-alto'}`}
                 style={{ '--tw-ring-color': c } as React.CSSProperties}>
                 <span className="size-1.5 shrink-0 rounded-full" style={{ background: c }} />
                 <b className="shrink-0 font-semibold text-tinta">{curto(a.nome)}</b>
@@ -390,9 +416,9 @@ function CardAlertas({ alertas, baixar }: { alertas: Alerta[] | null; baixar: (n
       </ul>
       {alertas && (
         <div className="num mt-4 flex items-center gap-4 border-t border-fio pt-3 text-[11.5px] text-tinta-2">
-          <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-desastre" />Crítico <b className="font-semibold text-tinta">{criticos}</b></span>
-          <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-media" />Aviso <b className="font-semibold text-tinta">{alertas.length - criticos}</b></span>
-          <span className="ml-auto">Total <b className="font-semibold text-tinta">{alertas.length}</b></span>
+          <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-desastre" />Crítico <b className="font-semibold text-tinta"><Conta n={criticos} /></b></span>
+          <span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-media" />Aviso <b className="font-semibold text-tinta"><Conta n={alertas.length - criticos} /></b></span>
+          <span className="ml-auto">Total <b className="font-semibold text-tinta"><Conta n={alertas.length} /></b></span>
         </div>
       )}
     </Card>
@@ -401,12 +427,12 @@ function CardAlertas({ alertas, baixar }: { alertas: Alerta[] | null; baixar: (n
 
 function CardChamados({ ch }: { ch: ListaChamados | null }) {
   return (
-    <Card className="h-full" titulo="Seus chamados" acao={<Link to="/chamados?sg=novo"><Chip><Plus />Abrir</Chip></Link>}>
+    <Card className="sem-lift h-full" titulo="Seus chamados" acao={<Link to="/chamados?sg=novo"><Chip><Plus />Abrir</Chip></Link>}>
       <ul className="flex flex-col gap-2">
         {ch?.manuais.slice(0, 5).map(c => (
           <li key={c.id}>
             <Link to={`/chamados?sg=${c.id}`} title={c.titulo}
-              className="flex h-[30px] items-center gap-2.5 rounded-full bg-painel-alto px-3 text-[12px] transition-colors hover:bg-pilula-hover">
+              className="pilula-x flex h-[30px] items-center gap-2.5 rounded-full bg-painel-alto px-3 text-[12px] hover:bg-pilula-hover">
               <b className="shrink-0 font-mono text-[11px] font-medium text-tinta-2">{c.numero}</b>
               <span className="min-w-0 flex-1 truncate text-tinta">{c.titulo}</span>
               <StatusChamado status={c.status} />
@@ -417,8 +443,8 @@ function CardChamados({ ch }: { ch: ListaChamados | null }) {
       </ul>
       {ch && (
         <div className="num mt-4 flex items-center gap-4 border-t border-fio pt-3 text-[11.5px] text-tinta-2">
-          <span>Em andamento <b className="font-semibold text-tinta">{ch.manuais.filter(c => c.status !== 'resolvido').length}</b></span>
-          <span className="ml-auto">Total <b className="font-semibold text-tinta">{ch.manuais.length}</b></span>
+          <span>Em andamento <b className="font-semibold text-tinta"><Conta n={ch.manuais.filter(c => c.status !== 'resolvido').length} /></b></span>
+          <span className="ml-auto">Total <b className="font-semibold text-tinta"><Conta n={ch.manuais.length} /></b></span>
         </div>
       )}
     </Card>
@@ -478,7 +504,7 @@ function CardCaminho({ pontos, v, alertas }: { pontos: Ponto[]; v: TVisao; alert
             </span>
           </div>
         </div>
-        <div className="px-3">Trocas<div className="num mt-1 text-[16px] font-semibold text-tinta">{quedas.length}</div></div>
+        <div className="px-3">Trocas<div className="num mt-1 text-[16px] font-semibold text-tinta"><Conta n={quedas.length} /></div></div>
         <div className="pl-3">No rádio<div className="num mt-1 text-[16px] font-semibold text-tinta">{noRadio ? duracao(noRadio) : '0 min'}</div></div>
       </div>
       <div className="relative mt-5 h-[34px]" role="img" aria-label="Quedas da fibra (blocos) e alertas (riscos) no período">

@@ -13,13 +13,15 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: v 
 
 /** `inverso`: valor menor é pior (sinal em dBm): escala com negativos e área rosa ABAIXO do limite crítico.
  *  `onZoom`: arrastar o mouse sobre o gráfico seleciona um trecho e devolve o intervalo (segundos Unix). */
-export default function Grafico({ dados, serie, cor, unidade, limites = [], faixas = [], altura = 220, inverso = false, onZoom }: {
+export default function Grafico({ dados, serie, cor, unidade, limites = [], faixas = [], altura = 220, inverso = false, fantasma, onZoom }: {
   dados: Ponto[]; serie: string; cor: string; unidade: string; limites?: Limite[]; faixas?: Faixa[]; altura?: number; inverso?: boolean
+  fantasma?: string // dataKey de uma série "fantasma" (período anterior) desenhada tracejada atrás
   onZoom?: (de: number, ate: number) => void
 }) {
   const [sel, setSel] = useState<[number, number] | null>(null)
   const id = `g-${serie}`
   const valores = dados.map(p => p[serie]).filter((v): v is number => v != null)
+  const media = valores.length ? valores.reduce((s, v) => s + v, 0) / valores.length : 0
   const maxDado = valores.length ? Math.max(...valores) : 1
   // Escala sem eixo Y (como na referência): cabe o dado e os limites próximos dele
   const minDado = valores.length ? Math.min(...valores) : 0
@@ -105,15 +107,31 @@ export default function Grafico({ dados, serie, cor, unidade, limites = [], faix
           {sel && sel[0] !== sel[1] && <ReferenceArea x1={sel[0]} x2={sel[1]} y1={base} y2={topo} fill="var(--color-fibra)" fillOpacity={0.14} stroke="var(--color-fibra)" strokeOpacity={0.5} />}
           <Tooltip
             cursor={{ stroke: 'var(--color-fio-forte)' }}
-            content={({ active, payload }) => active && payload?.length ? (
-              <div className="rounded-md bg-balao px-2.5 py-1.5 text-[11px] shadow-xl">
-                <div className="text-tinta-3">{dataHora(payload[0].payload.t)}</div>
-                <div className="num mt-0.5 font-semibold" style={{ color: cor }}>
-                  {payload[0].value == null ? 'sem resposta' : `${fmt(Number(payload[0].value))} ${unidade}`}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null
+              const v = payload[0].value == null ? null : Number(payload[0].value)
+              const delta = v != null && media ? (v - media) / media * 100 : null
+              const pior = inverso ? (delta ?? 0) < 0 : (delta ?? 0) > 0 // acima da média é "pior" (menos em dBm)
+              return (
+                <div className="min-w-[150px] rounded-lg border border-fio-forte bg-balao px-3 py-2 shadow-xl">
+                  <div className="num text-[10.5px] text-tinta-3">{dataHora(payload[0].payload.t)}</div>
+                  <div className="num mt-1 text-[15px] font-semibold" style={{ color: v == null ? 'var(--color-desastre)' : cor }}>
+                    {v == null ? 'sem resposta' : `${fmt(v)} ${unidade}`}
+                  </div>
+                  {delta != null && (
+                    <div className="mt-1.5 flex items-center justify-between border-t border-fio pt-1.5 text-[10.5px]">
+                      <span className="text-tinta-3">vs. média ({fmt(media)} {unidade})</span>
+                      <span className="num font-medium" style={{ color: Math.abs(delta) < 1 ? 'var(--color-tinta-3)' : pior ? 'var(--color-desastre)' : 'var(--color-led)' }}>
+                        {delta >= 0 ? '+' : ''}{delta.toFixed(0)}%
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ) : null}
+              )
+            }}
           />
+          {fantasma && <Area type="monotone" dataKey={fantasma} stroke="var(--color-tinta-4)" strokeWidth={1.2} strokeDasharray="4 4"
+            fill="none" connectNulls={false} isAnimationActive={false} dot={false} activeDot={false} baseValue={base} />}
           <Area type="monotone" dataKey={serie} stroke={`url(#${id}-linha)`} strokeWidth={1.6} fill={`url(#${id}-area)`}
             connectNulls={false} isAnimationActive={false} dot={false} baseValue={base}
             activeDot={{ r: 3.5, fill: cor, stroke: 'var(--color-painel)', strokeWidth: 2 }} />

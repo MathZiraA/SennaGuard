@@ -45,19 +45,22 @@ export default function Tv() {
           </span>
         )}
         {erro && <span className="text-[14px] text-desastre">sem atualização: {erro}</span>}
-        <span className="num ml-auto text-[40px] font-semibold tracking-[-0.02em]">{agora.toLocaleTimeString('pt-BR')}</span>
+        <div className="ml-auto text-right leading-none">
+          <div className="num text-[40px] font-semibold tracking-[-0.02em]">{agora.toLocaleTimeString('pt-BR')}</div>
+          <div className="mt-1.5 text-[14px] capitalize text-tinta-3">{agora.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</div>
+        </div>
       </header>
 
       <div className="[&_h1]:text-[30px]"><Trilho v={d.visao} /></div>
 
       <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_480px]">
-        <section className="rounded-xl border border-fio bg-painel px-9 pb-6 pt-7">
+        <section className="sombra-card rounded-2xl border border-fio bg-painel px-9 pb-6 pt-7">
           <h2 className="mb-2 text-[22px] font-semibold">Latência da fibra · últimas 6 h</h2>
           <Grafico dados={d.latencia} serie="fibra" cor="var(--color-fibra)" unidade="ms" altura={460}
             limites={[{ valor: 30, rotulo: 'Crítico', tipo: 'critico' }, { valor: 0.6, rotulo: 'Normal', tipo: 'normal' }]}
             faixas={faixasSemResposta(d.latencia, 'fibra', 'Fibra fora')} />
         </section>
-        <section className="rounded-xl border border-fio bg-painel px-7 py-7">
+        <section className="sombra-card rounded-2xl border border-fio bg-painel px-7 py-7">
           <h2 className="mb-5 text-[22px] font-semibold">Alertas ativos <span className="num text-tinta-3">{d.alertas.length}</span></h2>
           <ul className="flex flex-col gap-3">
             {d.alertas.map(a => {

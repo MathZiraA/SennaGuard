@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { BookLock, Check, ChevronRight, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { api, useApi, type Alerta } from '../lib/api'
@@ -6,14 +6,28 @@ import { dataHora, duracao, corSev } from '../lib/fmt'
 import { TrilhoMini } from '../components/Trilho'
 import Modal from '../components/Modal'
 import { Botao, Card, Carregando, Led, Segmentado, Sev, Vazio } from '../components/ui'
+import { toast } from '../lib/toast'
 
 const SEVS = ['Desastre', 'Alta', 'Média', 'Aviso']
 
 export default function Alertas() {
   const { dados, erro: erroDados, recarregar } = useApi<Alerta[]>('/api/alertas', 10000, ['alertas'])
   const [params, setParams] = useSearchParams()
-  const [filtro, setFiltro] = useState<'ativos' | 'todos'>('todos')
-  const [sevs, setSevs] = useState<string[]>([])
+  // Filtros guardados na URL: dá para compartilhar/recarregar mantendo severidade e "ativos" (o id do alerta aberto fica junto).
+  const filtro: 'ativos' | 'todos' = params.get('f') === 'ativos' ? 'ativos' : 'todos'
+  const sevs = params.getAll('sev')
+  const mudarParams = (fn: (p: URLSearchParams) => void) => setParams(p => { const n = new URLSearchParams(p); fn(n); return n }, { replace: true })
+  const setFiltro = (f: 'ativos' | 'todos') => mudarParams(p => (f === 'ativos' ? p.set('f', 'ativos') : p.delete('f')))
+  const alternarSev = (s: string) => mudarParams(p => { const cur = p.getAll('sev'); p.delete('sev'); (cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s]).forEach(x => p.append('sev', x)) })
+
+  // "Novo desde a última visita": marca alertas iniciados depois da última vez que você abriu esta tela.
+  const ultimaVisita = useRef<number>((() => { try { return Number(localStorage.getItem('sg:visto:alertas')) || 0 } catch { return 0 } })())
+  useEffect(() => {
+    if (!dados) return
+    const t = setTimeout(() => { try { localStorage.setItem('sg:visto:alertas', String(Math.floor(Date.now() / 1000))) } catch { /* sem storage */ } }, 1500)
+    return () => clearTimeout(t)
+  }, [dados])
+  const ehNovo = (a: Alerta) => ultimaVisita.current > 0 && a.inicio > ultimaVisita.current
 
   const lista = useMemo(() => (dados ?? []).filter(a =>
     (filtro === 'todos' || a.ativo) && (!sevs.length || sevs.includes(a.severidade))), [dados, filtro, sevs])
@@ -31,7 +45,9 @@ export default function Alertas() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="titulo-pagina">Alertas</h1>
+          <h1 className="flex items-center gap-2.5 titulo-pagina">Alertas
+            {lista.filter(ehNovo).length > 0 && <span className="rounded-full bg-fibra/15 px-2 py-0.5 text-[11px] font-semibold text-fibra">{lista.filter(ehNovo).length} novo{lista.filter(ehNovo).length > 1 ? 's' : ''}</span>}
+          </h1>
           <p className="mt-1 text-tinta-3">
             Problemas de todos os equipamentos nos últimos 7 dias (e os que continuam abertos), agrupados em incidentes.
             {ia?.percentual != null && <> Analista IA: <b className="font-semibold text-tinta">{ia.percentual}% útil</b> em {ia.avaliacoes} avaliações.</>}
@@ -41,7 +57,7 @@ export default function Alertas() {
           {SEVS.map(s => {
             const ligado = sevs.includes(s)
             return (
-              <button key={s} aria-pressed={ligado} onClick={() => setSevs(ligado ? sevs.filter(x => x !== s) : [...sevs, s])}
+              <button key={s} aria-pressed={ligado} onClick={() => alternarSev(s)}
                 className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${ligado ? 'border-fio-forte bg-painel-alto text-tinta' : 'border-fio text-tinta-3 hover:text-tinta-2'}`}>
                 <Led cor={corSev[s]} />{s}
               </button>
@@ -52,7 +68,7 @@ export default function Alertas() {
       </div>
 
       {!dados ? <Carregando erro={erroDados} onTentar={recarregar} /> : (
-        <Card className="!p-0">
+        <Card className="sem-lift !p-0">
           {lista.length === 0 ? <div className="p-5"><Vazio>Nenhum alerta com esse filtro.</Vazio></div> : (
             <>
             {/* Celular: cartões empilhados (o incidente mostra só o primeiro alerta, com a contagem) */}
@@ -60,11 +76,12 @@ export default function Alertas() {
               {grupos.map(g => {
                 const a = g[0]
                 return (
-                  <li key={a.id} className="border-b border-fio last:border-0">
-                    <button onClick={() => setParams({ id: a.id })} className="flex w-full flex-col gap-2 px-4 py-3.5 text-left">
+                  <li key={a.id} className="virtual-linha border-b border-fio last:border-0">
+                    <button onClick={() => setParams({ id: a.id })} className="linha-hover flex w-full flex-col gap-2 px-4 py-3.5 text-left">
                       <span className="flex items-start gap-3">
                         <TrilhoMini nome={a.nome} />
                         <span className="min-w-0 flex-1 font-medium leading-snug">{a.nome}</span>
+                        {ehNovo(a) && <span className="shrink-0 rounded bg-fibra/15 px-1.5 py-0.5 text-[10px] font-semibold text-fibra">novo</span>}
                       </span>
                       <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
                         <Sev nome={a.severidade} />
@@ -77,14 +94,14 @@ export default function Alertas() {
                 )
               })}
             </ul>
-            <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[760px] text-left">
+            <div className="hidden overflow-x-auto md:block"><table aria-label="Alertas e incidentes" className="w-full min-w-[760px] text-left">
               <thead className="text-[11px] font-medium text-tinta-3">
                 <tr className="border-b border-fio">
-                  <th className="py-3 pl-5 font-medium">Problema</th>
-                  <th className="font-medium">Severidade</th>
-                  <th className="font-medium">Início</th>
-                  <th className="font-medium">Duração</th>
-                  <th className="pr-5 font-medium">Situação</th>
+                  <th scope="col" className="py-3 pl-5 font-medium">Problema</th>
+                  <th scope="col" className="font-medium">Severidade</th>
+                  <th scope="col" className="font-medium">Início</th>
+                  <th scope="col" className="font-medium">Duração</th>
+                  <th scope="col" className="pr-5 font-medium">Situação</th>
                 </tr>
               </thead>
               <tbody>
@@ -92,13 +109,13 @@ export default function Alertas() {
                   const aberto = expandidos.includes(g[0].incidente)
                   return (aberto ? g : g.slice(0, 1)).map((a, i) => (
                   <tr key={a.id} onClick={() => setParams({ id: a.id })} tabIndex={0} onKeyDown={e => e.key === 'Enter' && setParams({ id: a.id })}
-                    className={`cursor-pointer border-b border-fio transition-colors last:border-0 hover:bg-realce/60 focus-visible:bg-realce ${i > 0 ? 'bg-fenda/60' : ''}`}>
+                    className={`linha-hover cursor-pointer border-b border-fio last:border-0 focus-visible:bg-realce ${i > 0 ? 'bg-fenda/60' : ''}`}>
                     <td className="py-3 pl-5">
                       <div className={`flex items-center gap-3 ${i > 0 ? 'pl-8' : ''}`}>
                         {i > 0 && <span className="-ml-4 h-6 w-3 rounded-bl-md border-b border-l border-fio-forte" />}
                         <TrilhoMini nome={a.nome} />
                         <div className="min-w-0">
-                          <div className="font-medium">{a.nome}</div>
+                          <div className="flex items-center gap-2 font-medium">{a.nome}{i === 0 && ehNovo(a) && <span className="shrink-0 rounded bg-fibra/15 px-1.5 py-0.5 text-[10px] font-semibold text-fibra">novo</span>}</div>
                           <div className="flex items-center gap-2 font-mono text-[11px] text-tinta-4">
                             {a.host} · evento {a.id}
                             {i === 0 && g.length > 1 && (
@@ -152,6 +169,7 @@ function Detalhe({ a, onMudou }: { a: Alerta; onMudou: () => void }) {
     await api(`/api/alertas/${a.id}/reconhecer`, { method: 'POST', body: JSON.stringify({ mensagem: msg }) }).finally(() => setEnviando(false))
     setMsg('')
     onMudou()
+    toast('Alerta reconhecido')
   }
 
   return (
