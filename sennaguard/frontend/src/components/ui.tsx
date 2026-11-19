@@ -5,7 +5,7 @@ export function Card({ titulo, extra, acao, children, className = '' }: {
   titulo?: ReactNode; extra?: ReactNode; acao?: ReactNode; children: ReactNode; className?: string
 }) {
   return (
-    <section className={`sombra-clara min-w-0 rounded-xl border border-fio bg-painel px-5 py-5 ${className}`}>
+    <section className={`sombra-card min-w-0 rounded-2xl border border-fio bg-painel px-5 py-5 ${className}`}>
       {titulo && (
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -180,8 +180,20 @@ export function Rotulo({ children }: { children: ReactNode }) {
   return <div className="text-[11px] font-medium text-tinta-3">{children}</div>
 }
 
-export function Vazio({ children }: { children: ReactNode }) {
-  return <div className="grid place-items-center rounded-xl border border-dashed border-fio-forte px-4 py-10 text-center text-tinta-3">{children}</div>
+export function Vazio({ children, icone, acao }: { children: ReactNode; icone?: ReactNode; acao?: ReactNode }) {
+  return (
+    <div className="grid place-items-center gap-3 rounded-2xl border border-dashed border-fio-forte px-4 py-12 text-center">
+      <span className="grid size-12 place-items-center rounded-full bg-painel-alto text-tinta-3 [&_svg]:size-6" aria-hidden>
+        {icone ?? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 13h4l1.5 3h7L17 13h4" /><path d="M4.5 13 6 5.5A2 2 0 0 1 8 4h8a2 2 0 0 1 2 1.5L19.5 13V18a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-5Z" />
+          </svg>
+        )}
+      </span>
+      <div className="max-w-sm text-[13px] text-tinta-3">{children}</div>
+      {acao}
+    </div>
+  )
 }
 
 /** Esqueleto enquanto os dados chegam. Com `erro`, vira o aviso de falha e oferece tentar de novo
@@ -189,6 +201,18 @@ export function Vazio({ children }: { children: ReactNode }) {
 export function Carregando({ erro, onTentar, altura = 'h-40' }: { erro?: string | null; onTentar?: () => void; altura?: string }) {
   if (erro) return <Falha erro={erro} onTentar={onTentar} />
   return <div role="status" aria-label="Carregando" className={`esqueleto rounded-xl border border-fio ${altura}`} />
+}
+
+/** Esqueleto no formato de um gráfico: shimmer de fundo + um traço ondulado fantasma, enquanto a série chega. */
+export function EsqueletoGrafico({ altura = 250 }: { altura?: number }) {
+  return (
+    <div className="relative w-full overflow-hidden rounded-xl" style={{ height: altura }} role="status" aria-label="Carregando gráfico">
+      <div className="esqueleto absolute inset-0 opacity-50" />
+      <svg className="absolute inset-0 h-full w-full text-fio-forte" preserveAspectRatio="none" viewBox="0 0 100 40" aria-hidden>
+        <path d="M0 30 C 10 26 14 18 22 20 S 34 32 42 28 56 12 66 16 82 30 100 22" fill="none" stroke="currentColor" strokeWidth="0.8" />
+      </svg>
+    </div>
+  )
 }
 
 export function Falha({ erro, onTentar }: { erro: string; onTentar?: () => void }) {

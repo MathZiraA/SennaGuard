@@ -28,9 +28,10 @@ export type Notificacoes = {
   caminho: boolean; chamados: boolean; manutencao: boolean; relatorio: boolean; silencio: boolean
 }
 export type Painel = { ordem: string[]; ocultos: string[] }
+export type Aparencia = { tema?: string; acento?: string; acentoHex?: string; densidade?: string }
 export type Eu = {
   id: number; nome: string; email: string; papel: string; permissoes: string[]; modo: string; telegram: boolean; telegram_disponivel: boolean
-  foto: number | null; tour_visto: boolean; painel: Painel | null; notificacoes: Notificacoes
+  foto: number | null; tour_visto: boolean; painel: Painel | null; notificacoes: Notificacoes; aparencia: Aparencia | null
 }
 export type Usuario = {
   id: number; nome: string; email: string; papel: string; ativo: number

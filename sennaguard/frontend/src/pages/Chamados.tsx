@@ -50,7 +50,7 @@ export default function Chamados() {
 
       <h2 className="mt-2 text-[13px] font-semibold text-tinta-2">{cliente ? 'Seus chamados' : 'Abertos pelas pessoas'}</h2>
       {manuais.length === 0 ? <Vazio>Nenhum chamado aberto até agora.</Vazio> : (
-        <Card className="!p-0 md:overflow-x-auto">
+        <Card className="sem-lift !p-0 md:overflow-x-auto">
           <ul>
             {manuais.map(c => <LinhaManual key={c.id} c={c} onAbrir={() => setParams({ sg: String(c.id) })} />)}
           </ul>
@@ -67,14 +67,14 @@ export default function Chamados() {
       </Modal>
 
       {chamados.length === 0 ? <Vazio>Nenhum chamado. Quedas curtas (menos de 1 h) não geram chamado.</Vazio> : (
-        <Card className="!p-0 md:overflow-x-auto">
+        <Card className="sem-lift !p-0 md:overflow-x-auto">
           <ul>
             {chamados.map(c => {
               const exp = aberto === c.numero
               return (
-                <li key={c.numero} className="border-b border-fio last:border-0">
+                <li key={c.numero} className="virtual-linha border-b border-fio last:border-0">
                   <button onClick={() => setAberto(exp ? null : c.numero)} aria-expanded={exp}
-                    className="grid w-full grid-cols-[minmax(0,1fr)_20px] items-center gap-x-4 gap-y-2 px-4 py-3.5 text-left transition-colors hover:bg-realce/60 md:min-w-[720px] md:grid-cols-[120px_minmax(0,1fr)_auto_150px_20px] md:px-5">
+                    className="linha-hover grid w-full grid-cols-[minmax(0,1fr)_20px] items-center gap-x-4 gap-y-2 px-4 py-3.5 text-left md:min-w-[720px] md:grid-cols-[120px_minmax(0,1fr)_auto_150px_20px] md:px-5">
                     <span className="font-mono text-[12px] font-medium text-fibra max-md:col-span-2">{c.numero}</span>
                     <span className="flex min-w-0 items-center gap-3 max-md:col-start-1">
                       <TrilhoMini nome={c.nome} />
@@ -115,9 +115,9 @@ export default function Chamados() {
 
 function LinhaManual({ c, onAbrir }: { c: ChamadoManual; onAbrir: () => void }) {
   return (
-    <li className="border-b border-fio last:border-0">
+    <li className="virtual-linha border-b border-fio last:border-0">
       {/* Celular: cartão empilhado */}
-      <button onClick={onAbrir} className="flex w-full flex-col gap-1.5 px-4 py-3.5 text-left md:hidden">
+      <button onClick={onAbrir} className="linha-hover flex w-full flex-col gap-1.5 px-4 py-3.5 text-left md:hidden">
         <span className="flex items-center gap-2">
           <span className="font-mono text-[12px] font-medium text-media">{c.numero}</span>
           <span className="ml-auto"><StatusChamado status={c.status} /></span>
@@ -126,7 +126,7 @@ function LinhaManual({ c, onAbrir }: { c: ChamadoManual; onAbrir: () => void }) 
         <span className="text-[11px] text-tinta-3">{CATEGORIAS[c.categoria]} · {IMPACTOS[c.impacto].toLowerCase()} · {c.aberto_por_nome}</span>
         <SlaChip c={c} />
       </button>
-      <button onClick={onAbrir} className="hidden w-full min-w-[720px] grid-cols-[100px_minmax(0,1fr)_140px_190px] items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-realce/60 md:grid">
+      <button onClick={onAbrir} className="linha-hover hidden w-full min-w-[720px] grid-cols-[100px_minmax(0,1fr)_140px_190px] items-center gap-4 px-5 py-3.5 text-left md:grid">
         <span className="font-mono text-[12px] font-medium text-media">{c.numero}</span>
         <span className="min-w-0">
           <span className="block truncate font-medium">{c.titulo}</span>

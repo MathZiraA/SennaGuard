@@ -11,9 +11,13 @@ import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
 import './index.css'
 import { aplicarTema } from './lib/tema'
+import { aplicarAcento } from './lib/cores'
+import { aplicarDensidade } from './lib/densidade'
 import { ativarToque } from './lib/toque'
 
 aplicarTema()
+aplicarAcento()
+aplicarDensidade()
 ativarToque()
 
 // Cada tela vira um pedaço separado do pacote: o login e a primeira tela abrem sem baixar o resto (gráficos, chat, etc.)

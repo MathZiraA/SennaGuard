@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { api, type Eu } from './api'
+import { aplicarServidor } from './aparencia'
 
 type Sessao = {
   eu: Eu | null
@@ -16,6 +17,9 @@ export const useSessao = () => useContext(Ctx)
 export function ProvedorSessao({ children }: { children: ReactNode }) {
   const [eu, setEu] = useState<Eu | null>(null)
   const [carregando, setCarregando] = useState(true)
+
+  // Ao entrar, a aparência guardada na conta vale (sincroniza entre navegadores/dispositivos).
+  useEffect(() => { if (eu?.aparencia) aplicarServidor(eu.aparencia) }, [eu?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     api<Eu>('/api/eu').then(setEu).catch(() => setEu(null)).finally(() => setCarregando(false))
