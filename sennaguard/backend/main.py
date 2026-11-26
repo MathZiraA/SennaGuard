@@ -33,6 +33,7 @@ import telegram
 import tempo_real
 import teste
 import tv
+import whatsapp
 from banco import BANCO, db  # noqa: F401  (BANCO e db usados também por gerenciar.py)
 from html import escape as _e  # texto de usuário nas mensagens HTML do Telegram
 
@@ -42,7 +43,8 @@ SENHA_DEMO = "senai2026"  # só no modo simulação
 
 app = FastAPI(title="SennaGuard API", docs_url=None, redoc_url=None, openapi_url=None)  # sem mapa público da API
 for r in (tempo_real.router, telegram.router, tv.router, relatorio.router, manutencao.router,
-          backup.router, chat.router, conhecimento.router, teste.router, anexos.router, perfil.router):
+          backup.router, chat.router, conhecimento.router, teste.router, anexos.router, perfil.router,
+          whatsapp.router):
     app.include_router(r)
 
 
@@ -63,6 +65,7 @@ def iniciar():
         tv.criar_tabelas(con)
         manutencao.criar_tabelas(con)
         teste.criar_tabelas(con)
+        whatsapp.criar_tabelas(con)
         conhecimento.criar_tabelas(con, simulacao=fonte.SIMULACAO)
         con.execute("""create table if not exists avaliacoes_ia (eventid text, usuario_id integer, util integer, em integer,
                        primary key (eventid, usuario_id))""")
@@ -272,7 +275,7 @@ def abrir_chamado(c: NovoChamado, u=auth.exigir("abrir_chamado")):
         atendimento.registrar(con, cid, "abertura", u, f"{c.titulo}\n\n{c.descricao}", anexos.prender(con, c.anexos, u, cid))
         novo = atendimento.detalhe(con, cid, u)
     tempo_real.avisar("chamados")
-    telegram.para_equipe(f"🆕 <b>Chamado SG-{cid}</b> · {atendimento.IMPACTOS_NOME[c.impacto]}\n{_e(c.titulo)}{_clipe(c.anexos)}\n<i>Aberto por {_e(u['nome'])}</i>",
+    telegram.para_equipe(f"🆕 <b>Chamado {atendimento.numero_de(cid)}</b> · {atendimento.IMPACTOS_NOME[c.impacto]}\n{_e(c.titulo)}{_clipe(c.anexos)}\n<i>Aberto por {_e(u['nome'])}</i>",
                          tipo="chamados", exceto=u["id"])
     return novo
 
@@ -301,39 +304,31 @@ def ver_chamado(cid: int, u=auth.exigir("chamados")):
 
 class Comentario(BaseModel):
     texto: str = Field("", max_length=4000)
-    interno: bool = False  # nota interna: só a equipe vê
     anexos: list[int] = Field(default_factory=list, max_length=anexos.POR_MENSAGEM)
 
 
 @app.post("/api/chamados/manuais/{cid}/comentario")
 def comentar(cid: int, c: Comentario, u=auth.exigir("chamados")):
+    # Comentários são observações SOBRE o chamado. Cliente e equipe comentam; o WhatsApp é o canal geral à parte.
     if not c.texto.strip() and not c.anexos:
-        raise HTTPException(422, "Escreva uma mensagem ou anexe um arquivo.")
-    if c.interno and u["papel"] == "Cliente":
-        raise HTTPException(403, "Notas internas são só da equipe.")
+        raise HTTPException(422, "Escreva um comentário ou anexe um arquivo.")
     with db() as con:
         ch = _chamado_ou_404(con, cid, u)
-        atendimento.registrar(con, cid, "nota" if c.interno else "comentario", u, c.texto, anexos.prender(con, c.anexos, u, cid))
-        if ch["status"] == "resolvido" and u["papel"] == "Cliente":  # cliente respondendo reabre
-            con.execute("update chamados_manuais set status='aberto' where id=?", (cid,))
-            atendimento.registrar(con, cid, "reaberto", u)
+        atendimento.registrar(con, cid, "comentario", u, c.texto, anexos.prender(con, c.anexos, u, cid))
         atendimento.marcar_visto(con, cid, u)  # quem escreve já leu tudo até aqui
         novo = atendimento.detalhe(con, cid, u)
     tempo_real.avisar("chamados")
-    if c.interno:
-        aviso = f"📝 <b>SG-{cid}</b> · nota interna de {_e(u['nome'])}\n{_e(c.texto[:400])}{_clipe(c.anexos)}"
-        if ch.get("responsavel") and ch["responsavel"] != u["id"]:
+    aviso = f"💬 <b>{atendimento.numero_de(cid)}</b> · {_e(u['nome'])} comentou\n{_e(c.texto[:400])}{_clipe(c.anexos)}"
+    if u["papel"] == "Cliente":  # cliente comentou → avisa o responsável, ou a equipe se ninguém assumiu
+        if ch.get("responsavel"):
             telegram.para_usuarios([ch["responsavel"]], aviso, tipo="chamados")
-        elif not ch.get("responsavel"):
-            telegram.para_equipe(aviso, tipo="chamados", exceto=u["id"])
-        return novo
-    aviso = f"💬 <b>SG-{cid}</b> · {_e(u['nome'])} respondeu\n{_e(c.texto[:400])}{_clipe(c.anexos)}"
-    if u["papel"] != "Cliente":
-        telegram.para_usuarios([ch["aberto_por"]], aviso, tipo="chamados")
-    elif ch.get("responsavel"):
-        telegram.para_usuarios([ch["responsavel"]], aviso, tipo="chamados")
-    else:
-        telegram.para_equipe(aviso, tipo="chamados")
+        else:
+            telegram.para_equipe(aviso, tipo="chamados")
+    else:  # equipe comentou → avisa quem abriu (o cliente) e o responsável, se for outra pessoa
+        destinos = {ch["aberto_por"]}
+        if ch.get("responsavel"):
+            destinos.add(ch["responsavel"])
+        telegram.para_usuarios(destinos - {u["id"]}, aviso, tipo="chamados")
     return novo
 
 
@@ -348,12 +343,28 @@ def mudar_status(cid: int, m: MudarStatus, u=auth.exigir("atender_chamado")):
         if ch["status"] != m.status:
             con.execute("update chamados_manuais set status=?, responsavel=coalesce(responsavel, ?) where id=?", (m.status, u["id"], cid))
             atendimento.registrar(con, cid, m.status, u)
-            texto = {"em_atendimento": f"🔧 <b>SG-{cid}</b> está em atendimento com {_e(u['nome'])}.",
-                     "resolvido": f"✅ <b>SG-{cid}</b> foi resolvido por {_e(u['nome'])}. Se o problema voltar, é só responder no painel.",
-                     "aberto": f"↩️ <b>SG-{cid}</b> voltou para aberto."}[m.status]
+            texto = {"em_atendimento": f"🔧 <b>{atendimento.numero_de(cid)}</b> está em atendimento com {_e(u['nome'])}.",
+                     "resolvido": f"✅ <b>{atendimento.numero_de(cid)}</b> foi resolvido por {_e(u['nome'])}. Se o problema voltar, é só responder no painel.",
+                     "aberto": f"↩️ <b>{atendimento.numero_de(cid)}</b> voltou para aberto."}[m.status]
             telegram.para_usuarios([ch["aberto_por"]], texto, tipo="chamados")
             if m.status == "resolvido":
                 conhecimento.rascunhar_de_chamado(cid)  # vira rascunho na base de conhecimento
+        novo = atendimento.detalhe(con, cid, u)
+    tempo_real.avisar("chamados")
+    return novo
+
+
+class Resolucao(BaseModel):
+    texto: str = Field("", max_length=8000)
+
+
+@app.post("/api/chamados/manuais/{cid}/resolucao")
+def salvar_resolucao(cid: int, r: Resolucao, u=auth.exigir("atender_chamado")):
+    """Como o problema foi resolvido. Fica no chamado e vira base de busca para casos parecidos."""
+    with db() as con:
+        _chamado_ou_404(con, cid, u)
+        con.execute("update chamados_manuais set resolucao=?, atualizado_em=? where id=?",
+                    (r.texto.strip() or None, int(time.time()), cid))
         novo = atendimento.detalhe(con, cid, u)
     tempo_real.avisar("chamados")
     return novo

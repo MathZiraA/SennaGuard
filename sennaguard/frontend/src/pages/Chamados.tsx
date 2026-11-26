@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ChevronDown, Plus, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { ChevronDown, Plus, Search, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useApi, type ChamadoManual, type ListaChamados } from '../lib/api'
 import { dataHora, desde } from '../lib/fmt'
 import { useSessao } from '../lib/sessao'
@@ -14,8 +14,13 @@ export default function Chamados() {
   const { pode, eu } = useSessao()
   const [params, setParams] = useSearchParams()
   const [aberto, setAberto] = useState<string | null>(null)
+  const [busca, setBusca] = useState('')
   if (!dados) return <Carregando erro={erroDados} onTentar={recarregar} />
   const { chamados, manuais } = dados
+  const q = busca.trim().toLowerCase()
+  const manuaisFiltrados = q
+    ? manuais.filter(c => `${c.numero} ${c.titulo} ${c.descricao} ${c.resolucao ?? ''}`.toLowerCase().includes(q))
+    : manuais
   const ig = dados.integridade.ok ? dados.integridade_manuais : dados.integridade
   const registros = dados.integridade.registros + dados.integridade_manuais.registros
   const pendentes = manuais.filter(c => c.status !== 'resolvido').length + chamados.filter(c => c.status === 'aberto').length
@@ -29,7 +34,7 @@ export default function Chamados() {
           <h1 className="titulo-pagina">Chamados</h1>
           <p className="mt-1 text-tinta-3">{cliente
             ? 'Abra um chamado quando algo não estiver funcionando na Filial e acompanhe o atendimento aqui.'
-            : 'Chamados abertos pelas pessoas (SG-xxx) e os automáticos de quedas acima de 1 h (NOC-xxx).'}</p>
+            : 'Chamados abertos pelas pessoas (SN-xxx) e os automáticos de quedas acima de 1 h (NOC-xxx).'}</p>
         </div>
         {pode('abrir_chamado') && <Botao variante="primario" onClick={() => setParams({ sg: 'novo' })}><Plus />Abrir chamado</Botao>}
       </div>
@@ -48,11 +53,21 @@ export default function Chamados() {
         </div>
       </div>
 
-      <h2 className="mt-2 text-[13px] font-semibold text-tinta-2">{cliente ? 'Seus chamados' : 'Abertos pelas pessoas'}</h2>
-      {manuais.length === 0 ? <Vazio>Nenhum chamado aberto até agora.</Vazio> : (
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-[13px] font-semibold text-tinta-2">{cliente ? 'Seus chamados' : 'Abertos pelas pessoas'}</h2>
+        {manuais.length > 0 && (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-tinta-4" strokeWidth={2} />
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por problema ou resolução…"
+              className="h-8 w-[260px] max-w-[72vw] rounded-lg border border-fio bg-fenda pl-8 pr-2.5 text-[12.5px] text-tinta placeholder:text-tinta-4 focus:border-fibra/60 focus:outline-none" />
+          </div>
+        )}
+      </div>
+      {manuais.length === 0 ? <Vazio>Nenhum chamado aberto até agora.</Vazio>
+        : manuaisFiltrados.length === 0 ? <Vazio>Nenhum chamado combina com “{busca}”.</Vazio> : (
         <Card className="sem-lift !p-0 md:overflow-x-auto">
           <ul>
-            {manuais.map(c => <LinhaManual key={c.id} c={c} onAbrir={() => setParams({ sg: String(c.id) })} />)}
+            {manuaisFiltrados.map(c => <LinhaManual key={c.id} c={c} onAbrir={() => setParams({ sg: String(c.id) })} />)}
           </ul>
         </Card>
       )}
@@ -60,7 +75,7 @@ export default function Chamados() {
       <h2 className="mt-2 text-[13px] font-semibold text-tinta-2">Automáticos: quedas acima de 1 h</h2>
       <Modal lado={sel !== 'novo'} aberto={!!sel} onClose={() => setParams({})}
         titulo={sel === 'novo' ? 'Abrir chamado' : manuais.find(c => String(c.id) === sel)?.titulo ?? 'Chamado'}
-        descricao={sel === 'novo' ? 'A equipe do NOC recebe na hora.' : `SG-${sel}`}>
+        descricao={sel === 'novo' ? 'A equipe do NOC recebe na hora.' : manuais.find(c => String(c.id) === sel)?.numero ?? ''}>
         {sel === 'novo'
           ? <NovoChamado onCancelar={() => setParams({})} onCriado={c => { recarregar(); setParams({ sg: String(c.id) }) }} />
           : sel && <DetalheChamado id={Number(sel)} onMudou={recarregar} />}
@@ -123,14 +138,14 @@ function LinhaManual({ c, onAbrir }: { c: ChamadoManual; onAbrir: () => void }) 
           <span className="ml-auto"><StatusChamado status={c.status} /></span>
         </span>
         <span className="font-medium leading-snug">{c.titulo}</span>
-        <span className="text-[11px] text-tinta-3">{CATEGORIAS[c.categoria]} · {IMPACTOS[c.impacto].toLowerCase()} · {c.aberto_por_nome}</span>
+        <span className="text-[11px] text-tinta-3">{CATEGORIAS[c.categoria]} · {IMPACTOS[c.impacto].toLowerCase()} · {c.aberto_por_nome}{c.resolucao && <span className="text-led"> · ✓ resolução</span>}</span>
         <SlaChip c={c} />
       </button>
       <button onClick={onAbrir} className="linha-hover hidden w-full min-w-[720px] grid-cols-[100px_minmax(0,1fr)_140px_190px] items-center gap-4 px-5 py-3.5 text-left md:grid">
         <span className="font-mono text-[12px] font-medium text-media">{c.numero}</span>
         <span className="min-w-0">
           <span className="block truncate font-medium">{c.titulo}</span>
-          <span className="text-[11px] text-tinta-3">{CATEGORIAS[c.categoria]} · {IMPACTOS[c.impacto].toLowerCase()} · {c.aberto_por_nome}</span>
+          <span className="text-[11px] text-tinta-3">{CATEGORIAS[c.categoria]} · {IMPACTOS[c.impacto].toLowerCase()} · {c.aberto_por_nome}{c.resolucao && <span className="text-led"> · ✓ resolução</span>}</span>
         </span>
         <StatusChamado status={c.status} />
         <span className="text-right"><SlaChip c={c} /></span>

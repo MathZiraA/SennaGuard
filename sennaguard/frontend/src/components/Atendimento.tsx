@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
-import { Checks, Check, Clock, FilePdf, LockSimple, Lightbulb, Paperclip, X } from '@phosphor-icons/react'
+import { Clock, FilePdf, Lightbulb, Paperclip, X } from '@phosphor-icons/react'
 import { CheckCircle2, Loader2, Send, Wrench } from 'lucide-react'
 import { api, enviarArquivo, urlAnexo, type Anexo, type ChamadoManual, type ContextoEnlace, type Registro } from '../lib/api'
 import { dataHora, desde, duracao } from '../lib/fmt'
@@ -237,39 +237,36 @@ function Evento({ r }: { r: Registro }) {
   )
 }
 
-/** Mensagem da conversa. As minhas ficam à direita; nota interna em âmbar, só para a equipe. */
-function Mensagem({ r, minha, descricao }: { r: Registro; minha: boolean; descricao: string }) {
-  const nota = r.acao === 'nota'
+/** Um comentário/anotação do chamado. A abertura mostra o relato original; os demais, as notas da equipe. */
+function ComentarioItem({ r, descricao }: { r: Registro; descricao: string }) {
+  const abertura = r.acao === 'abertura'
   const daEquipe = r.autor_papel !== 'Cliente'
-  const texto = r.acao === 'abertura' ? descricao : r.texto // a abertura guarda título + descrição; o título já está no topo
+  const texto = abertura ? descricao : r.texto // a abertura guarda título + descrição; o título já está no topo
+  const etiqueta = abertura ? 'relato da abertura' : daEquipe ? 'comentário · NOC' : 'Filial'
   return (
-    <li className={`flex flex-col ${minha ? 'items-end' : 'items-start'}`}>
-      <div className="mb-1 flex items-center gap-1.5 text-[11.5px] text-tinta-3">
-        {nota && <LockSimple size={12} weight="fill" className="text-media" />}
-        <b className="font-semibold text-tinta-2">{r.autor_nome}</b>
-        <span>{nota ? 'nota interna' : r.acao === 'abertura' ? 'abriu o chamado' : daEquipe ? 'NOC' : 'Filial'} · {dataHora(r.em)}</span>
-      </div>
-      <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 leading-relaxed ${nota ? 'border border-dashed border-media/50 bg-media/10'
-        : minha ? 'rounded-tr-md bg-fibra/15' : 'rounded-tl-md bg-painel-alto'}`}>
-        {texto && <p className="whitespace-pre-wrap text-tinta">{texto}</p>}
-        <Anexos lista={r.anexos} />
-      </div>
-      {minha && !nota && (
-        <div className="mt-1 flex items-center gap-1 text-[10.5px] text-tinta-4" title={r.visto ? `Visto por ${r.visto.por}` : undefined}>
-          {r.visto ? <><Checks size={13} weight="bold" className="text-fibra" />Visto {daEquipe ? 'pelo cliente' : 'pelo NOC'} às {dataHora(r.visto.em).split(' ')[1]}</> : <><Check size={13} weight="bold" />Enviado</>}
+    <li className="flex gap-3">
+      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-painel-alto text-[12px] font-semibold text-tinta-2">{r.autor_nome.slice(0, 1).toUpperCase()}</span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 text-[11.5px] text-tinta-3">
+          <b className="font-semibold text-tinta-2">{r.autor_nome}</b>
+          <span>{etiqueta} · {dataHora(r.em)}</span>
         </div>
-      )}
+        <div className={`mt-1 rounded-xl rounded-tl-md px-3.5 py-2.5 leading-relaxed ${abertura ? 'border border-fio bg-fenda' : 'bg-painel-alto'}`}>
+          {texto && <p className="whitespace-pre-wrap text-tinta">{texto}</p>}
+          <Anexos lista={r.anexos} />
+        </div>
+      </div>
     </li>
   )
 }
 
 export function DetalheChamado({ id, onMudou }: { id: number; onMudou: () => void }) {
-  const { pode, eu } = useSessao()
+  const { pode } = useSessao()
   const [c, setC] = useState<ChamadoManual | null>(null)
   const [texto, setTexto] = useState('')
-  const [interno, setInterno] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
+  const [resol, setResol] = useState('')
   const an = useAnexos()
   const fim = useRef<HTMLDivElement>(null)
   // Recarrega quando o outro lado responde ou lê (tempo real pelo canal "chamados")
@@ -279,6 +276,8 @@ export function DetalheChamado({ id, onMudou }: { id: number; onMudou: () => voi
     window.addEventListener('sg:chamados', carregar)
     return () => window.removeEventListener('sg:chamados', carregar)
   }, [id])
+  // Sincroniza o campo de resolução com o servidor (só quando ela muda, para não apagar o que está sendo digitado)
+  useEffect(() => { setResol(c?.resolucao ?? '') }, [id, c?.resolucao])
   const mensagens = c?.registros?.filter(r => ['abertura', 'comentario', 'nota'].includes(r.acao)).length ?? 0
   useEffect(() => { fim.current?.scrollIntoView({ block: 'nearest' }) }, [mensagens])
 
@@ -290,10 +289,9 @@ export function DetalheChamado({ id, onMudou }: { id: number; onMudou: () => voi
   const responder = async (e: FormEvent) => {
     e.preventDefault()
     if (ocupado || an.subindo > 0 || (!texto.trim() && !an.lista.length)) return // mesma trava do botão Enviar
-    if (await agir(`/api/chamados/manuais/${id}/comentario`, { texto, interno, anexos: an.lista.map(a => a.id) })) { setTexto(''); an.limpar() }
+    if (await agir(`/api/chamados/manuais/${id}/comentario`, { texto, anexos: an.lista.map(a => a.id) })) { setTexto(''); an.limpar() }
   }
   if (!c) return <div className="grid h-40 place-items-center text-tinta-3"><Loader2 className="size-5 animate-spin" /></div>
-  const cliente = eu?.papel === 'Cliente'
 
   return (
     <div className="flex flex-col gap-6">
@@ -318,39 +316,49 @@ export function DetalheChamado({ id, onMudou }: { id: number; onMudou: () => voi
         </div>
       )}
 
+      {/* Como foi resolvido: a equipe documenta a solução; fica no chamado e é buscável em casos parecidos. */}
+      {pode('atender_chamado') ? (
+        <section className="rounded-xl border border-led/30 bg-led/[0.05] p-4">
+          <div className="mb-1 flex items-center gap-1.5"><Lightbulb size={16} weight="fill" className="text-led" /><h3 className="text-[13px] font-semibold">Como foi resolvido</h3></div>
+          <p className="mb-2.5 text-[11.5px] text-tinta-3">Descreva a solução. Fica registrada no chamado e aparece na busca quando surgir um problema parecido.</p>
+          <textarea rows={4} value={resol} onChange={e => setResol(e.target.value)} maxLength={8000}
+            placeholder="Ex.: O serviço do sistema de vendas no caixa 2 estava travado. Reiniciei o serviço e liberei a porta 1433 no firewall. Validei com o setor." className={`${campo} resize-none py-2`} />
+          <div className="mt-2 flex items-center justify-end gap-3">
+            {resol !== (c.resolucao ?? '') && <span className="text-[11px] text-tinta-4">alterações não salvas</span>}
+            <Botao variante="primario" disabled={ocupado || resol.trim() === (c.resolucao ?? '')} onClick={() => agir(`/api/chamados/manuais/${c.id}/resolucao`, { texto: resol })}><CheckCircle2 />Salvar resolução</Botao>
+          </div>
+        </section>
+      ) : c.resolucao && (
+        <section className="rounded-xl border border-led/30 bg-led/[0.06] p-4">
+          <div className="mb-1.5 flex items-center gap-1.5"><Lightbulb size={16} weight="fill" className="text-led" /><h3 className="text-[13px] font-semibold">Como foi resolvido</h3></div>
+          <p className="whitespace-pre-wrap leading-relaxed text-tinta">{c.resolucao}</p>
+        </section>
+      )}
+
       <section>
-        <h3 className="mb-3 text-[13px] font-semibold">Conversa</h3>
+        <h3 className="mb-1 text-[13px] font-semibold">Comentários do chamado</h3>
+        <p className="mb-3 text-[11.5px] text-tinta-3">Observações sobre este chamado — cliente e equipe podem comentar. Para falar com a equipe fora do chamado, use o WhatsApp.</p>
         <ol className="flex flex-col gap-4">
           {c.registros?.map(r => ['abertura', 'comentario', 'nota'].includes(r.acao)
-            ? <Mensagem key={r.seq} r={r} descricao={c.descricao} minha={r.autor_nome === eu?.nome && (r.autor_papel === 'Cliente') === cliente} />
+            ? <ComentarioItem key={r.seq} r={r} descricao={c.descricao} />
             : <Evento key={r.seq} r={r} />)}
         </ol>
         <div ref={fim} />
       </section>
 
-      <form onSubmit={responder} className={`flex flex-col gap-2.5 rounded-xl border p-3 ${interno ? 'border-dashed border-media/50 bg-media/[0.06]' : 'border-fio'}`}>
-        {!cliente && (
-          <div className="flex gap-1 text-[12px]">
-            {[{ v: false, r: 'Responder ao cliente' }, { v: true, r: 'Nota interna' }].map(o => (
-              <button key={o.r} type="button" aria-pressed={interno === o.v} onClick={() => setInterno(o.v)}
-                className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 font-medium transition-colors ${interno === o.v ? (o.v ? 'bg-media/20 text-tinta' : 'bg-painel-alto text-tinta') : 'text-tinta-3 hover:text-tinta-2'}`}>
-                {o.v && <LockSimple size={12} weight="fill" />}{o.r}
-              </button>
-            ))}
-          </div>
-        )}
-        <label htmlFor="resp" className="sr-only">{cliente ? 'Responder ao NOC' : interno ? 'Nota interna' : 'Responder ao cliente'}</label>
+      <form onSubmit={responder} className="flex flex-col gap-2.5 rounded-xl border border-fio p-3">
+        <label htmlFor="resp" className="sr-only">Comentar no chamado</label>
         <textarea id="resp" rows={3} value={texto} onChange={e => setTexto(e.target.value)} onPaste={an.colar} maxLength={4000}
           // Enter envia, Shift+Enter pula linha (isComposing: não envia no meio de um acento sendo digitado)
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); responder(e) } }}
-          placeholder={interno ? 'Só a equipe vê. O cliente não é avisado.' : c.status === 'resolvido' && cliente ? 'Se o problema voltou, conte aqui: o chamado é reaberto.' : 'Escreva uma mensagem…'}
+          placeholder="Escreva um comentário sobre o chamado…"
           className={`${campo} resize-none py-2`} />
         <EscolherAnexos an={an} />
         {erro && <p className="text-[12px] text-desastre">{erro}</p>}
         <div className="flex items-center justify-between gap-2">
           <span className="hidden text-[11px] text-tinta-4 sm:inline">Enter envia · Shift+Enter pula linha</span>
           <Botao type="submit" variante="primario" className="ml-auto" disabled={ocupado || an.subindo > 0 || (!texto.trim() && !an.lista.length)}>
-            {interno ? <LockSimple weight="fill" /> : <Send />}{interno ? 'Salvar nota' : 'Enviar'}
+            <Send />Comentar
           </Botao>
         </div>
       </form>

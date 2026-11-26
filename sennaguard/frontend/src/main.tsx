@@ -25,6 +25,7 @@ const Tv = lazy(() => import('./pages/Tv'))
 const Visao = lazy(() => import('./pages/Visao'))
 const Alertas = lazy(() => import('./pages/Alertas'))
 const Chamados = lazy(() => import('./pages/Chamados'))
+const Whatsapp = lazy(() => import('./pages/Whatsapp'))
 const Equipamentos = lazy(() => import('./pages/Equipamentos'))
 const Usuarios = lazy(() => import('./pages/Usuarios'))
 import Manutencoes from './pages/Manutencao' // a Shell já usa este módulo (faixa de manutenção)
@@ -58,6 +59,7 @@ function App() {
         <Route index element={<Visao />} />
         <Route path="alertas" element={<Exige permissao="alertas"><Alertas /></Exige>} />
         <Route path="chamados" element={<Exige permissao="chamados"><Chamados /></Exige>} />
+        <Route path="whatsapp" element={<Exige permissao="whatsapp"><Whatsapp /></Exige>} />
         <Route path="equipamentos" element={<Exige permissao="equipamentos"><Equipamentos /></Exige>} />
         <Route path="usuarios" element={<Exige permissao="usuarios"><Usuarios /></Exige>} />
         <Route path="manutencao" element={<Exige permissao="equipamentos"><Manutencoes /></Exige>} />

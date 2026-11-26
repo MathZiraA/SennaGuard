@@ -31,6 +31,7 @@ def criar_tabelas(con: sqlite3.Connection):
     # "Visto às": até qual registro cada pessoa já leu, e quando
     con.execute("""create table if not exists chamado_vistos (
         chamado_id integer not null, usuario_id integer not null, nome text, lado text not null, seq integer not null, em integer not null)""")
+    coluna(con, "chamados_manuais", "resolucao", "text")  # como o problema foi resolvido (base de busca p/ casos parecidos)
 
 
 def _hash(anterior, registro):
@@ -81,9 +82,13 @@ def contexto_do_enlace(v: dict) -> str:
                        "fibra_ms": ms(f), "radio_ms": ms(r)}, ensure_ascii=False)
 
 
+def numero_de(cid: int) -> str:
+    return f"SN-{cid:03d}"
+
+
 def _publico(row):
     c = dict(row)
-    c["numero"] = f"SG-{c['id']}"
+    c["numero"] = numero_de(c["id"])
     c["contexto"] = json.loads(c["contexto"]) if c.get("contexto") else None
     return c
 

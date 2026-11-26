@@ -20,7 +20,7 @@ COOKIE_SEGURO = os.environ.get("COOKIE_SEGURO") == "1"  # 1 em produção (HTTPS
 # O que cada papel pode fazer. O cliente da Filial só vê o estado do enlace e os chamados.
 # Quem abre chamado é o cliente; a equipe do NOC atende. Teste de failover derruba a fibra: só o Analista pede
 # e só o Administrador aprova. Operador é o plantão (acompanha, reconhece alertas e atende chamados).
-_EQUIPE = {"visao", "alertas", "reconhecer", "chamados", "atender_chamado", "equipamentos", "conhecimento", "chat"}
+_EQUIPE = {"visao", "alertas", "reconhecer", "chamados", "atender_chamado", "equipamentos", "conhecimento", "chat", "whatsapp"}
 PERMISSOES = {
     "Administrador": _EQUIPE | {"usuarios", "relatorios", "manutencao", "backups", "testes", "aprovar_teste",
                                 "editar_conhecimento"},

@@ -62,7 +62,7 @@ let fonteEventos: EventSource | null = null
 export function iniciarTempoReal() {
   if (fonteEventos) return
   fonteEventos = new EventSource(import.meta.env.BASE_URL + 'api/eventos')
-  for (const canal of ['visao', 'alertas', 'chamados', 'manutencao', 'backups', 'testes', 'conhecimento'])
+  for (const canal of ['visao', 'alertas', 'chamados', 'manutencao', 'backups', 'testes', 'conhecimento', 'whatsapp'])
     fonteEventos.addEventListener(canal, () => window.dispatchEvent(new Event(`sg:${canal}`)))
 }
 export function pararTempoReal() { fonteEventos?.close(); fonteEventos = null }
@@ -118,9 +118,19 @@ export type Registro = {
 export type ContextoEnlace = { caminho: 'fibra' | 'radio'; fibra_up: boolean; radio_up: boolean; fibra_ms: string; radio_ms: string }
 export type ChamadoManual = {
   id: number; numero: string; titulo: string; descricao: string; categoria: string; impacto: string
-  status: 'aberto' | 'em_atendimento' | 'resolvido'; contexto: ContextoEnlace | null
+  status: 'aberto' | 'em_atendimento' | 'resolvido'; contexto: ContextoEnlace | null; resolucao: string | null
   aberto_por: number; aberto_por_nome: string; responsavel_nome: string | null; criado_em: number; atualizado_em: number
   sla: { resposta: { prazo: number; em: number | null }; solucao: { prazo: number; em: number | null } }
   registros?: Registro[]
 }
 export type ListaChamados = { chamados: Chamado[]; integridade: Integridade; manuais: ChamadoManual[]; integridade_manuais: Integridade }
+
+// --- Atendimento por WhatsApp (modelo Trinity) ---
+export type WaEstado = 'triagem' | 'fila' | 'atendimento' | 'concluida'
+export type WaConversa = {
+  id: number; nome: string | null; unidade: string | null; estado: WaEstado
+  responsavel: number | null; criado_em: number; atualizado_em: number; ultima_cliente_em: number | null; concluida_em: number | null
+  nao_lidas: number; ultima: { texto: string; direcao: string; em: number } | null
+}
+export type WaMensagem = { seq: number; direcao: 'entrada' | 'saida' | 'sistema'; autor_id: number | null; autor_nome: string | null; texto: string; status: string | null; em: number }
+export type WaConversaDetalhe = WaConversa & { janela_aberta: boolean; responsavel_nome: string | null; mensagens: WaMensagem[] }

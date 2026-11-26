@@ -4,8 +4,8 @@ import { Carregando } from './ui'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import * as Menu from '@radix-ui/react-dropdown-menu'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Bell, BookOpenText, ClockCounterClockwise, Compass, DotsThreeOutline, Flask, Wrench, CaretDoubleLeft, CaretDoubleRight, ChartLineUp, DotsThree, Lifebuoy, HardDrives, Keyboard, MagnifyingGlass, Moon, SignOut, Siren, Sun, TelegramLogo, Ticket, UserCircle, UsersThree } from '@phosphor-icons/react'
-import { iniciarTempoReal, pararTempoReal, useApi, type Alerta, type ListaChamados } from '../lib/api'
+import { Bell, BookOpenText, ClockCounterClockwise, Compass, DotsThreeOutline, Flask, Wrench, CaretDoubleLeft, CaretDoubleRight, ChartLineUp, DotsThree, Lifebuoy, HardDrives, Keyboard, MagnifyingGlass, Moon, SignOut, Siren, Sun, TelegramLogo, Ticket, UserCircle, UsersThree, WhatsappLogo } from '@phosphor-icons/react'
+import { iniciarTempoReal, pararTempoReal, useApi, type Alerta, type ListaChamados, type WaConversa } from '../lib/api'
 import { alternarTema, temaAtual } from '../lib/tema'
 import { situacao, type Manutencao } from '../pages/Manutencao'
 import { ConectarTelegram } from '../pages/Perfil'
@@ -23,6 +23,7 @@ const NAV = [
   { para: '/', rotulo: 'Visão do enlace', curto: 'Visão', icone: ChartLineUp, permissao: 'visao' },
   { para: '/alertas', rotulo: 'Alertas e incidentes', curto: 'Alertas', icone: Siren, permissao: 'alertas' },
   { para: '/chamados', rotulo: 'Chamados', curto: 'Chamados', icone: Ticket, permissao: 'chamados' },
+  { para: '/whatsapp', rotulo: 'WhatsApp', curto: 'WhatsApp', icone: WhatsappLogo, permissao: 'whatsapp' },
   { para: '/equipamentos', rotulo: 'Equipamentos', curto: 'Equip.', icone: HardDrives, permissao: 'equipamentos' },
   { para: '/manutencao', rotulo: 'Manutenção', curto: 'Manutenção', icone: Wrench, permissao: 'equipamentos' },
   { para: '/testes', rotulo: 'Testes de failover', curto: 'Testes', icone: Flask, permissao: 'testes' },
@@ -44,6 +45,8 @@ export default function Shell() {
   // Para a equipe: chamados abertos pela Filial que ninguém assumiu ainda
   const { dados: ch } = useApi<ListaChamados>(pode('atender_chamado') ? '/api/chamados' : '', 60000, ['chamados'])
   const semDono = ch?.manuais.filter(c => c.status === 'aberto').length ?? 0
+  const { dados: waConversas } = useApi<WaConversa[]>(pode('whatsapp') ? '/api/whatsapp/conversas' : '', 30000, ['whatsapp'])
+  const naFila = waConversas?.filter(c => c.estado === 'fila').length ?? 0
   const ativos = alertas?.filter(a => a.ativo && !a.reconhecido).length ?? 0
   // Faixa de manutenção: em andamento, ou começando nas próximas 24 h (aparece também para o cliente)
   const { dados: janelas } = useApi<Manutencao[]>('/api/manutencoes', 60000, ['manutencao'])
@@ -53,6 +56,7 @@ export default function Shell() {
   const ponto: Record<string, string | null> = {
     '/alertas': ativos ? 'var(--color-desastre)' : null,
     '/chamados': semDono ? 'var(--color-media)' : null,
+    '/whatsapp': naFila ? 'var(--color-media)' : null,
   }
   const alternar = () => { const r = !recolhida; setRecolhida(r); try { localStorage.setItem('sg:lateral', r ? '1' : '0') } catch { /* sem storage */ } }
   const [mais, setMais] = useState(false)

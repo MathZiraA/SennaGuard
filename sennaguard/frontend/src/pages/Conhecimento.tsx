@@ -44,7 +44,7 @@ export default function Conhecimento() {
               <li key={a.id} className="flex items-center gap-3 border-t border-fio py-2.5 first:border-0">
                 <Sparkle size={15} weight="fill" className="text-fibra" />
                 <div className="min-w-0 flex-1"><div className="truncate font-medium">{a.titulo}</div>
-                  <div className="text-[11px] text-tinta-3">{a.origem_chamado ? `do chamado SG-${a.origem_chamado} · ` : ''}por {a.autor} · há {desde(a.atualizado_em)}</div></div>
+                  <div className="text-[11px] text-tinta-3">{a.origem_chamado ? `do chamado SN-${String(a.origem_chamado).padStart(3, '0')} · ` : ''}por {a.autor} · há {desde(a.atualizado_em)}</div></div>
                 <Botao onClick={() => setEditando(a)}><PencilSimple />Revisar e publicar</Botao>
               </li>
             ))}
